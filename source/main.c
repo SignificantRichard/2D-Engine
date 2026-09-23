@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <unistd.h>
+#include <math.h>
 
 // Let me be clear -Barack Barack
 #define true 1
@@ -32,12 +33,10 @@
 #define body_setPos setBodyPosition
 
 // 2D representation of Vector
-struct Vector_t {
+typedef struct {
     int x;
     int y;
-};
-
-typedef struct Vector_t Vect;
+} Vect;
 
 Vect createVector(int x, int y) {
     Vect vec;
@@ -66,14 +65,12 @@ void diviVectors(Vect* original, Vect* dividor) {
     original->y /= dividor->y;
 }
 
-struct Body_t {
+typedef struct {
     Vect position;
     Vect velocity;
     Vect acceleration;
     int maxSpeed;
-};
-
-typedef struct Body_t Body;
+} Body;
 
 Body createBody() {
     Body body;
@@ -112,13 +109,11 @@ void setBodyPos(Body* body, int x, int y) {
 
 // vector array
 
-struct VectArray_t {
+typedef struct {
     Vect* data;      // Pointer to contiguous heap buffer
     size_t size;     // Current number of elements stored
     size_t capacity; // Allocated capacity in elements
-};
-
-typedef struct VectArray_t VectArray;
+} VectArray;
 
 Vect* createVectorArray() {
     Vect* arr = malloc(sizeof(Vect));
@@ -211,28 +206,16 @@ void freeVectArray(VectArray* arr) {
 }
 
 // Edge
-
-struct Edge_t {
+typedef struct {
     Vect* a;
     Vect* b;
-};
+} Edge;
 
-typedef struct Edge_t Edge;
-
-struct Edge_t {
-    Vect* a;
-    Vect* b;
-};
-
-typedef struct Edge_t Edge;
-
-struct EdgeArray_t {
+typedef struct {
     Edge* data;      // Contiguous array of Edge elements
     size_t size;     // Current number of edges
     size_t capacity; // Total allocated slots
-};
-
-typedef struct EdgeArray_t EdgeArray;
+} EdgeArray;
 
 // Create and initialize a new Edge dynamic array
 EdgeArray createEdgeArray(size_t initialCapacity) {
@@ -318,21 +301,17 @@ void freeEdgeArray(EdgeArray* arr) {
     arr->capacity = 0;
 }
 
-struct Face_t {
+typedef struct {
     Edge a;
     Edge b;
     Edge c;
-};
+} Face;
 
-typedef struct Face_t Face;
-
-struct FaceArray_t {
+typedef struct {
     Face* data;      // Contiguous array of Face elements
     size_t size;     // Current number of faces
     size_t capacity; // Total allocated slots
-};
-
-typedef struct FaceArray_t FaceArray;
+} FaceArray;
 
 // Create and initialize a new Face dynamic array
 FaceArray createFaceArray(size_t initialCapacity) {
@@ -418,41 +397,31 @@ void freeFaceArray(FaceArray* arr) {
     arr->capacity = 0;
 }
 
-struct Mesh_t {
+typedef struct {
     Face* faces;
-};
+} Mesh;
 
-typedef struct Mesh_t Mesh;
-
-struct World_t {
+typedef struct {
     Mesh* meshes; // all static elements (should be wrapped later)
     Body* bodies; // all moving elements
-};
+} World;
 
-typedef struct World_t World;
-
-struct Sprite_t {
+typedef struct {
     Uint32* image;
-};
+} Sprite;
 
-typedef struct Sprite_t Sprite;
-
-struct RenderedBody_t {
+typedef struct {
     Sprite sprite; // what is drawn
     Body body; // movement
     Mesh mesh; // collision mesh
     int alpha; // 255, set to 0 to hide
-};
+} RenderedBody;
 
-typedef struct RenderedBody_t RenderedBody;
-
-struct StaticBody_t {
+typedef struct {
     Sprite sprite;
     Mesh mesh;
     Vect position;
-};
-
-typedef struct StaticBody_t StaticBody;
+} StaticBody;
 
 World initEngine() {
     World world;
@@ -499,6 +468,60 @@ void ModifyPixels(SDL_Surface* surface, int x, int y, int w, int h, int r, int g
     }
 }
 
+// Struct to store intersection results
+typedef struct {
+    bool hit;
+    Vect point;     // Exact (x, y) coordinates of the hit
+    float distance; // Distance from origin to the hit point
+} RaycastHit;
+
+RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
+    RaycastHit result = { .hit = false, .point = {0, 0}, .distance = 0.0f };
+
+    Vect ray_vec;
+    ray_vec = Vector_new(direction.x, direction.y);
+    Vect mvect;
+    mvect = Vector_new(magnitude, magnitude);
+    Vector_mult(&ray_vec, &mvect);
+    
+    Vect* p1 = edge.a;
+    Vect* p2 = edge.b;
+    Vect edge_vec = Vector_new(p2->x - p1->x, p2->y - p1->y);
+
+    // 2. Compute 2D cross product: r x s
+    float r_cross_s = (float)(ray_vec.x * edge_vec.y - ray_vec.y * edge_vec.x);
+
+    // If parallel or collinear, no unique intersection point exists
+    if (r_cross_s == 0.0f) {
+        return result;
+    }
+
+    // Vector from edge start point to ray origin (qp)
+    Vect qp = Vector_new(origin.x - p1->x, origin.y - p1->y);
+
+    // 3. Solve parametric factors t and u
+    // t: normalized position along ray [0.0 = origin, 1.0 = end of ray]
+    // u: normalized position along edge [0.0 = p1, 1.0 = p2]
+    float t = (float)(qp.x * edge_vec.y - qp.y * edge_vec.x) / r_cross_s;
+    float u = (float)(qp.x * ray_vec.y - qp.y * ray_vec.x) / r_cross_s;
+
+    // 4. Verify valid intersection bounds
+    if (t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f) {
+        result.hit = true;
+
+        // Calculate exact point on the edge: origin + (t * ray_vec)
+        result.point.x = origin.x + (int)(t * ray_vec.x);
+        result.point.y = origin.y + (int)(t * ray_vec.y);
+
+        // Distance = t * total_ray_magnitude
+        result.distance = t * (float)magnitude;
+    }
+
+    return result;
+}
+
+
+// Do game checks here
 void tickHit() {
 
 }
