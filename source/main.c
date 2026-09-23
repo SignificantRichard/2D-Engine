@@ -402,13 +402,14 @@ typedef struct {
 } Mesh;
 
 typedef struct {
-    Mesh* meshes; // all static elements (should be wrapped later)
-    Body* bodies; // all moving elements
-} World;
-
-typedef struct {
     Uint32* image;
 } Sprite;
+
+typedef struct {
+    Sprite sprite;
+    Mesh mesh;
+    Vect position;
+} StaticBody;
 
 typedef struct {
     Sprite sprite; // what is drawn
@@ -417,17 +418,32 @@ typedef struct {
     int alpha; // 255, set to 0 to hide
 } RenderedBody;
 
-typedef struct {
+RenderedBody createRenderedBody() {
+    Body body;
+    RenderedBody render;
+
+    body = Body_new();
+    RenderedBody.body = body;
+    
     Sprite sprite;
-    Mesh mesh;
-    Vect position;
-} StaticBody;
+    RenderedBody.sprite = sprite;
+
+    return RenderedBody;
+}
+
+typedef struct {
+    Mesh* meshes; // all static elements (should be wrapped later)
+    RenderedBody* bodies; // all moving elements
+    RenderedBody player; // player
+} World;
 
 World initEngine() {
     World world;
     // calloc MAX_ELEMENTS_IN_WORLD elements because I can't be bothered
     world.meshes = (Mesh*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(Mesh));
-    world.bodies = (Body*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(Body));
+    world.bodies = (RenderedBody*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(RenderedBody));
+    
+    world.player = createRenderedBody();
     return world;
 }
 
@@ -523,7 +539,7 @@ RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
 
 // Do game checks here
 void tickHit() {
-
+    // pull controls
 }
 
 int Work() {
@@ -572,6 +588,23 @@ int Work() {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
                 running = false;
+            } else if (event.type == SDL_EVENT_KEY_DOWN) {
+                if (event.key.repeat) {
+                    continue;
+                }
+
+                switch (event.key.key) {
+                    case SDLK_UP:
+                        break;
+                    case SDLK_DOWN:
+                        break;
+                    case SDLK_LEFT:
+                        break;
+                    case SDLK_RIGHT:
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
