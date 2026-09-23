@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <unistd.h>
 
 // Let me be clear -Barack Barack
 #define true 1
@@ -9,14 +12,15 @@
 
 // envars
 #define DEFAULT_MAX_SPEED 16
+#define MAX_ELEMENTS_IN_WORLD 255
+#define TICK_RATE 2 // tick every 2 frames
+#define FRAME_RATE 60
 
 // abstract vector operands
 #define Vector_new createVector
 #define Vector_add addVectors
 #define Vector_mult multVectors
 #define Vector_div diviVectors
-
-#define Mesh VectArray
 
 // abstract body manipulation
 #define Body_new createBody
@@ -326,6 +330,8 @@ struct FaceArray_t {
     size_t capacity; // Total allocated slots
 };
 
+typedef struct FaceArray_t FaceArray;
+
 // Create and initialize a new Face dynamic array
 FaceArray createFaceArray(size_t initialCapacity) {
     FaceArray arr;
@@ -416,14 +422,86 @@ struct Mesh_t {
 
 typedef struct Mesh_t Mesh;
 
-struct World {
+struct World_t {
     Mesh* meshes; // all static elements (should be wrapped later)
-    Bodies* bodies; // all moving elements
+    Body* bodies; // all moving elements
+};
+
+typedef struct World_t World;
+
+bool initEngine() {
+    World world;
+    // calloc MAX_ELEMENTS_IN_WORLD elements because I can't be bothered
+    world.meshes = (Mesh*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(Mesh));
+    world.bodies = (Body*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(Body));
+    return true;
+}
+
+void tickHit() {
+
+}
+
+int Work() {
+    const Uint32 frameDelay = 1000 / FRAME_RATE;
+    bool running = true;
+    unsigned int tick = 0;
+
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
+        return 1;
+    }
+
+    // Create Window and Renderer (returns true on success)
+    SDL_Window* window = NULL;
+    SDL_Renderer* renderer = NULL;
+    if (!SDL_CreateWindowAndRenderer("Engine", 320, 240, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window and renderer: %s", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    // Main Loop
+    while (running) {
+        Uint64 frameStart = SDL_GetTicks();
+
+        tick++;
+        if (tick % TICK_RATE == 0) {
+            tickHit();
+        }
+
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_EVENT_QUIT) {
+                running = false;
+            }
+        }
+
+        // Render clear & present
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+        SDL_RenderPresent(renderer);
+
+        // Frame rate limiting
+        Uint64 frameTime = SDL_GetTicks() - frameStart;
+        if (frameTime < frameDelay) {
+            SDL_Delay(frameDelay - (Uint32)frameTime);
+        }
+    }
+
+    // Cleanup
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;
 }
 
 int main() {
-    Vect vec;
-    vec = Vector_new(10, 10);
-    
-    return 0;
+    if (!initEngine()) {
+        return 1;
+    }
+
+    print("Engine initialized\n");
+
+    return Work();
 }
