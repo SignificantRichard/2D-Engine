@@ -15,6 +15,8 @@
 #define MAX_ELEMENTS_IN_WORLD 255
 #define TICK_RATE 2 // tick every 2 frames
 #define FRAME_RATE 60
+#define INTERNAL_WIDTH 640
+#define INTERNAL_HEIGHT 480
 
 // abstract vector operands
 #define Vector_new createVector
@@ -429,12 +431,72 @@ struct World_t {
 
 typedef struct World_t World;
 
-bool initEngine() {
+struct Sprite_t {
+    Uint32* image;
+};
+
+typedef struct Sprite_t Sprite;
+
+struct RenderedBody_t {
+    Sprite sprite; // what is drawn
+    Body body; // movement
+    Mesh mesh; // collision mesh
+    int alpha; // 255, set to 0 to hide
+};
+
+typedef struct RenderedBody_t RenderedBody;
+
+struct StaticBody_t {
+    Sprite sprite;
+    Mesh mesh;
+    Vect position;
+};
+
+typedef struct StaticBody_t StaticBody;
+
+World initEngine() {
     World world;
     // calloc MAX_ELEMENTS_IN_WORLD elements because I can't be bothered
     world.meshes = (Mesh*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(Mesh));
     world.bodies = (Body*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(Body));
-    return true;
+    return world;
+}
+
+void ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, int a) {
+    // Lock surface for direct pixel access
+    if (SDL_MUSTLOCK(surface)) {
+        if (!SDL_LockSurface(surface)) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock surface: %s", SDL_GetError());
+            return;
+        }
+    }
+
+    // Cast raw void* pixel buffer to 32-bit unsigned integer pointer (for RGBA8888)
+    Uint32* pixels = (Uint32*)surface->pixels;
+    int width = surface->w;
+    int height = surface->h;
+    
+    // Pitch is in bytes. Divide by sizeof(Uint32) to get pitch in 32-bit pixels
+    int pitchInPixels = surface->pitch / sizeof(Uint32);
+
+    // Map standard R, G, B, A to the pixel format of this surface
+    Uint32 color = SDL_MapRGBA(SDL_GetPixelFormatDetails(surface->format), NULL, r, g, b, a);
+
+    // Write pixel using row-pitch offset
+    pixels[y * pitchInPixels + x] = color;
+
+    // Unlock surface when finished
+    if (SDL_MUSTLOCK(surface)) {
+        SDL_UnlockSurface(surface);
+    }
+}
+
+void ModifyPixels(SDL_Surface* surface, int x, int y, int w, int h, int r, int g, int b, int a) {
+    for (int i = x; i < w+x; i++) {
+        for (int j = y; j < h+y; j++) {
+            ModifyPixel(surface, i, j, r, g, b, a);
+        }
+    }
 }
 
 void tickHit() {
@@ -444,30 +506,44 @@ void tickHit() {
 int Work() {
     const Uint32 frameDelay = 1000 / FRAME_RATE;
     bool running = true;
-    unsigned int tick = 0;
+    Uint32 frameCount = 0;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
         return 1;
     }
 
-    // Create Window and Renderer (returns true on success)
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
-    if (!SDL_CreateWindowAndRenderer("Engine", 320, 240, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window and renderer: %s", SDL_GetError());
+    if (!SDL_CreateWindowAndRenderer("Pixel Manipulation Engine", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window/renderer: %s", SDL_GetError());
         SDL_Quit();
         return 1;
     }
 
-    // Main Loop
+    // buffer surface
+    SDL_Surface* surface = SDL_CreateSurface(INTERNAL_WIDTH, INTERNAL_HEIGHT, SDL_PIXELFORMAT_RGBA8888);
+    if (!surface) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create surface: %s", SDL_GetError());
+        return 1;
+    }
+
+    // Create a streaming GPU texture matching the surface dimensions
+    SDL_Texture* texture = SDL_CreateTexture(
+        renderer, 
+        surface->format, 
+        SDL_TEXTUREACCESS_STREAMING, 
+        surface->w, 
+        surface->h
+    );
+
+    // Define everything and everyone
+
+    World world;
+    world = initEngine();
+
     while (running) {
         Uint64 frameStart = SDL_GetTicks();
-
-        tick++;
-        if (tick % TICK_RATE == 0) {
-            tickHit();
-        }
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -476,12 +552,19 @@ int Work() {
             }
         }
 
-        // Render clear & present
+        // Upload surface pixel data to GPU texture
+        SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
+
+        // Clear and Render
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+
+        // Render texture scaled to fill window
+        SDL_RenderTexture(renderer, texture, NULL, NULL);
+
         SDL_RenderPresent(renderer);
 
-        // Frame rate limiting
+        // Cap frame rate
         Uint64 frameTime = SDL_GetTicks() - frameStart;
         if (frameTime < frameDelay) {
             SDL_Delay(frameDelay - (Uint32)frameTime);
@@ -489,6 +572,8 @@ int Work() {
     }
 
     // Cleanup
+    SDL_DestroyTexture(texture);
+    SDL_DestroySurface(surface);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -497,11 +582,5 @@ int Work() {
 }
 
 int main() {
-    if (!initEngine()) {
-        return 1;
-    }
-
-    print("Engine initialized\n");
-
     return Work();
 }
