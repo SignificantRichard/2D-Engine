@@ -450,6 +450,7 @@ World initEngine() {
     world.bodies = (RenderedBody*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(RenderedBody));
     
     world.player = createRenderedBody();
+    world.player.body.velocity = Vector_new(0, 0); // for some reason the player's velocity is not init
 
     Camera camera;
     camera.target = &world.player.body;
@@ -605,9 +606,6 @@ int Work() {
             if (event.type == SDL_EVENT_QUIT) {
                 running = false;
             } else if (event.type == SDL_EVENT_KEY_DOWN) {
-                if (event.key.repeat) {
-                    continue;
-                }
 
                 switch (event.key.key) {
                     case SDLK_UP:
@@ -627,9 +625,6 @@ int Work() {
                 }
                 world.player.body.acceleration = plrMovementVect;
             } else if (event.type == SDL_EVENT_KEY_UP) {
-                if (event.key.repeat) {
-                    continue;
-                }
 
                 SDL_Keycode key = event.key.key;
 
@@ -646,31 +641,24 @@ int Work() {
             }
         }
 
-        Vector_add(&(world.player.body.velocity), &(world.player.body.acceleration));
-        
-        // correct overspeed
         int curVel = sqrt(pow(world.player.body.velocity.x, 2) + pow(world.player.body.velocity.y, 2));
-        if (curVel > world.player.body.maxSpeed) {
-            double correction = world.player.body.maxSpeed / curVel;
-            world.player.body.velocity.x *= correction;
-            world.player.body.velocity.y *= correction;
+
+        if (curVel <= world.player.body.maxSpeed) {
+            Vector_add(&(world.player.body.velocity), &(world.player.body.acceleration));
         }
+
+        Vector_add(&(world.player.body.velocity), &(world.player.body.acceleration));
 
         // if acceleration is 0, slow down
         if (world.player.body.acceleration.x == 0) {
-            world.player.body.velocity.x *= 0.95;
+            world.player.body.velocity.x *= 0.75;
         }
         if (world.player.body.acceleration.y == 0) {
-            world.player.body.velocity.y *= 0.95;
+            world.player.body.velocity.y *= 0.75;
         }
 
         // apply motion
         Vector_add(&(world.player.body.position), &(world.player.body.velocity));
-
-        if (frameCount++ == TICK_RATE) {
-            frameCount %= TICK_RATE;
-            tickHit(&world);
-        }
 
         // print("%d, %d\n", world.player.body.acceleration.x, world.player.body.acceleration.y);
         
