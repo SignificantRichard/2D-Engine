@@ -423,12 +423,12 @@ RenderedBody createRenderedBody() {
     RenderedBody render;
 
     body = Body_new();
-    RenderedBody.body = body;
+    render.body = body;
     
     Sprite sprite;
-    RenderedBody.sprite = sprite;
+    render.sprite = sprite;
 
-    return RenderedBody;
+    return render;
 }
 
 typedef struct {
@@ -538,11 +538,32 @@ RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
 
 
 // Do game checks here
-void tickHit() {
-    // pull controls
+void tickHit(World* world) {
+    Vector_add(&(world->player.body.velocity), &(world->player.body.acceleration));
+    
+    // correct overspeed
+    int curVel = sqrt(pow(world->player.body.velocity.x, 2) + pow(world->player.body.velocity.y, 2));
+    if (curVel > world->player.body.maxSpeed) {
+        double correction = world->player.body.maxSpeed / curVel;
+        world->player.body.velocity.x *= correction;
+        world->player.body.velocity.y *= correction;
+    }
+
+    // if acceleration is 0, slow down
+    if (world->player.body.acceleration.x == 0) {
+        world->player.body.velocity.x *= 0.9;
+    }
+    if (world->player.body.acceleration.y == 0) {
+        world->player.body.velocity.y *= 0.9;
+    }
+
+    // apply motion
+    Vector_add(&(world->player.body.position), &(world->player.body.velocity));
+    print("%d, %d\n", world->player.body.position.x, world->player.body.position.y);
 }
 
 int Work() {
+
     const Uint32 frameDelay = 1000 / FRAME_RATE;
     bool running = true;
     Uint32 frameCount = 0;
@@ -580,6 +601,8 @@ int Work() {
 
     World world;
     world = initEngine();
+    Vect plrMovementVect;
+    plrMovementVect = Vector_new(0, 0);
 
     while (running) {
         Uint64 frameStart = SDL_GetTicks();
@@ -595,18 +618,47 @@ int Work() {
 
                 switch (event.key.key) {
                     case SDLK_UP:
+                        plrMovementVect.y = 1;
                         break;
                     case SDLK_DOWN:
+                        plrMovementVect.y = -1;
                         break;
                     case SDLK_LEFT:
+                        plrMovementVect.x = -1;
                         break;
                     case SDLK_RIGHT:
+                        plrMovementVect.x = 1;
                         break;
                     default:
                         break;
                 }
+                world.player.body.acceleration = plrMovementVect;
+            } else if (event.type == SDL_EVENT_KEY_UP) {
+                if (event.key.repeat) {
+                    continue;
+                }
+
+                SDL_Keycode key = event.key.key;
+
+                if (key == SDLK_RIGHT && plrMovementVect.x == 1) {
+                    plrMovementVect.x = 0;
+                } else if (key == SDLK_LEFT && plrMovementVect.x == -1) {
+                    plrMovementVect.x = 0;
+                } else if (key == SDLK_UP && plrMovementVect.y == 1) {
+                    plrMovementVect.y = 0;
+                } else if (key == SDLK_DOWN && plrMovementVect.y == -1) {
+                    plrMovementVect.y = 0;
+                }
+                world.player.body.acceleration = plrMovementVect;
             }
         }
+
+        if (frameCount++ == TICK_RATE) {
+            frameCount %= TICK_RATE;
+            tickHit(&world);
+        }
+
+        // print("%d, %d\n", world.player.body.acceleration.x, world.player.body.acceleration.y);
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
