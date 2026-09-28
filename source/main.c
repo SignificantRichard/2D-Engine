@@ -539,27 +539,6 @@ RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
 
 // Do game checks here
 void tickHit(World* world) {
-    Vector_add(&(world->player.body.velocity), &(world->player.body.acceleration));
-    
-    // correct overspeed
-    int curVel = sqrt(pow(world->player.body.velocity.x, 2) + pow(world->player.body.velocity.y, 2));
-    if (curVel > world->player.body.maxSpeed) {
-        double correction = world->player.body.maxSpeed / curVel;
-        world->player.body.velocity.x *= correction;
-        world->player.body.velocity.y *= correction;
-    }
-
-    // if acceleration is 0, slow down
-    if (world->player.body.acceleration.x == 0) {
-        world->player.body.velocity.x *= 0.9;
-    }
-    if (world->player.body.acceleration.y == 0) {
-        world->player.body.velocity.y *= 0.9;
-    }
-
-    // apply motion
-    Vector_add(&(world->player.body.position), &(world->player.body.velocity));
-    print("%d, %d\n", world->player.body.position.x, world->player.body.position.y);
 }
 
 int Work() {
@@ -653,12 +632,35 @@ int Work() {
             }
         }
 
+        Vector_add(&(world.player.body.velocity), &(world.player.body.acceleration));
+        
+        // correct overspeed
+        int curVel = sqrt(pow(world.player.body.velocity.x, 2) + pow(world.player.body.velocity.y, 2));
+        if (curVel > world.player.body.maxSpeed) {
+            double correction = world.player.body.maxSpeed / curVel;
+            world.player.body.velocity.x *= correction;
+            world.player.body.velocity.y *= correction;
+        }
+
+        // if acceleration is 0, slow down
+        if (world.player.body.acceleration.x == 0) {
+            world.player.body.velocity.x *= 0.9;
+        }
+        if (world.player.body.acceleration.y == 0) {
+            world.player.body.velocity.y *= 0.9;
+        }
+
+        // apply motion
+        Vector_add(&(world.player.body.position), &(world.player.body.velocity));
+
         if (frameCount++ == TICK_RATE) {
             frameCount %= TICK_RATE;
             tickHit(&world);
         }
 
         // print("%d, %d\n", world.player.body.acceleration.x, world.player.body.acceleration.y);
+        
+        ModifyPixels(surface, world.player.body.position.x, -world.player.body.position.y, 20, 20, 255, 255, 255, 255);
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
@@ -677,6 +679,9 @@ int Work() {
         if (frameTime < frameDelay) {
             SDL_Delay(frameDelay - (Uint32)frameTime);
         }
+
+        // clear all
+        ModifyPixels(surface, 0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT, 0, 0, 0, 255);
     }
 
     // Cleanup
