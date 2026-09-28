@@ -432,9 +432,15 @@ RenderedBody createRenderedBody() {
 }
 
 typedef struct {
+    Vect offset;
+    Body* target;
+} Camera;
+
+typedef struct {
     Mesh* meshes; // all static elements (should be wrapped later)
     RenderedBody* bodies; // all moving elements
     RenderedBody player; // player
+    Camera camera; // camera
 } World;
 
 World initEngine() {
@@ -444,15 +450,23 @@ World initEngine() {
     world.bodies = (RenderedBody*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(RenderedBody));
     
     world.player = createRenderedBody();
+
+    Camera camera;
+    camera.target = &world.player.body;
+    world.camera = camera;
     return world;
 }
 
-void ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, int a) {
+bool ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, int a) {
+    if (x < 0 || y < 0 || x > INTERNAL_WIDTH || y > INTERNAL_HEIGHT) {
+        return 1;
+    }
+
     // Lock surface for direct pixel access
     if (SDL_MUSTLOCK(surface)) {
         if (!SDL_LockSurface(surface)) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock surface: %s", SDL_GetError());
-            return;
+            return 1;
         }
     }
 
@@ -474,6 +488,7 @@ void ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, 
     if (SDL_MUSTLOCK(surface)) {
         SDL_UnlockSurface(surface);
     }
+    return 0;
 }
 
 void ModifyPixels(SDL_Surface* surface, int x, int y, int w, int h, int r, int g, int b, int a) {
@@ -535,7 +550,6 @@ RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
 
     return result;
 }
-
 
 // Do game checks here
 void tickHit(World* world) {
@@ -644,10 +658,10 @@ int Work() {
 
         // if acceleration is 0, slow down
         if (world.player.body.acceleration.x == 0) {
-            world.player.body.velocity.x *= 0.9;
+            world.player.body.velocity.x *= 0.95;
         }
         if (world.player.body.acceleration.y == 0) {
-            world.player.body.velocity.y *= 0.9;
+            world.player.body.velocity.y *= 0.95;
         }
 
         // apply motion
