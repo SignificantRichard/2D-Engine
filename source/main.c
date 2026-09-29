@@ -441,6 +441,7 @@ typedef struct {
     RenderedBody* bodies; // all moving elements
     RenderedBody player; // player
     Camera camera; // camera
+    EdgeArray walls; // static collision bounds
 } World;
 
 World initEngine() {
@@ -451,6 +452,18 @@ World initEngine() {
     
     world.player = createRenderedBody();
     world.player.body.velocity = Vector_new(0, 0); // for some reason the player's velocity is not init
+
+    EdgeArray colliders;
+    colliders = createEdgeArray(1);
+    // set up a collider (temp)
+    Edge edge;
+    Vect v = Vector_new(200, 0);
+    edge.a = &v;
+    Vect v1 = Vector_new(200, 200);
+    edge.b = &v1;
+    edgeArrayPushBack(&colliders, edge);
+
+    world.walls = colliders;
 
     Camera camera;
     camera.target = &world.player.body;
@@ -550,6 +563,14 @@ RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
     }
 
     return result;
+}
+
+int lazyApproxSqrt(int x) {
+    // Lazy for collision check
+    if (x > 2*INTERNAL_WIDTH/3) {
+        return 0b01111111111111111;
+    }
+    return -x*(x-INTERNAL_WIDTH)/INTERNAL_WIDTH/3;
 }
 
 // Do game checks here
@@ -660,9 +681,40 @@ int Work() {
         // apply motion
         Vector_add(&(world.player.body.position), &(world.player.body.velocity));
 
+        // decelerate faster if accelerating in opposite direction to velocity
+        // bitwise op to check first number
+        // int xDecel = world.player.body.acceleration.x & world.player.body.velocity.x;
+        // int yDecel = world.player.body.acceleration.y & world.player.body.velocity.y;
+
+        // if (xDecel < 0) {
+        //     world.player.body.velocity.x *= 0.75;
+        // }
+
+        // if (yDecel < 0) {
+        //     world.player.body.velocity.y *= 0.75;
+        // }
+
+        // check if colliding with walls
+
+        int index = 0;
+
+        print("%d\n",world.walls.size);
+
+        while (world.walls.size < index) {
+            Edge collider = &world.walls.data[index++];
+            // do dist check later
+            RaycastHit ray;
+            ray = raycast(world.player.body.position, world.player.body.velocity, 1, *collider);
+            print("%d\n", ray.hit);
+        }
+
+
         // print("%d, %d\n", world.player.body.acceleration.x, world.player.body.acceleration.y);
         
+        // draw player
         ModifyPixels(surface, world.player.body.position.x, -world.player.body.position.y, 20, 20, 255, 255, 255, 255);
+        // draw edge
+        ModifyPixels(surface, 200, 0, 10, 200, 255, 0, 0, 255);
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
