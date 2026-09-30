@@ -17,7 +17,6 @@ Issues can be sent to `/dev/null`
 | My Engine | Any Commercial Engine |
 | --- | --- |
 | Written while too tired to think | Written by people smarter than us |
-| --- | --- |
 | Tables are fun to make | These people are too busy to make this |
 
 <p>Therefore my engine is better</p>

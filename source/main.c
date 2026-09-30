@@ -22,6 +22,7 @@
 // abstract vector operands
 #define Vector_new createVector
 #define Vector_add addVectors
+#define Vector_sub subVectors
 #define Vector_mult multVectors
 #define Vector_div diviVectors
 
@@ -69,20 +70,16 @@ typedef struct {
     Vect position;
     Vect velocity;
     Vect acceleration;
+    Vect moveDirection; // attempting to set accelerate to here
     int maxSpeed;
 } Body;
 
 Body createBody() {
     Body body;
-
-    // define sub stuff
-    Vect position;
-    position = Vector_new(0, 0);
-    Vect acceleration;
-    acceleration = Vector_new(0, 0);
     
-    body.position = position;
-    body.acceleration = acceleration;
+    body.position = Vector_new(0, 0);
+    body.acceleration = Vector_new(0, 0);
+    body.moveDirection = Vector_new(0, 0);
     body.maxSpeed = DEFAULT_MAX_SPEED;
 
     return body;
@@ -207,8 +204,8 @@ void freeVectArray(VectArray* arr) {
 
 // Edge
 typedef struct {
-    Vect* a;
-    Vect* b;
+    Vect a;
+    Vect b;
 } Edge;
 
 typedef struct {
@@ -454,13 +451,13 @@ World initEngine() {
     world.player.body.velocity = Vector_new(0, 0); // for some reason the player's velocity is not init
 
     EdgeArray colliders;
-    colliders = createEdgeArray(1);
+    colliders = createEdgeArray(0);
     // set up a collider (temp)
     Edge edge;
     Vect v = Vector_new(200, 0);
-    edge.a = &v;
+    edge.a = v;
     Vect v1 = Vector_new(200, 200);
-    edge.b = &v1;
+    edge.b = v1;
     edgeArrayPushBack(&colliders, edge);
 
     world.walls = colliders;
@@ -529,9 +526,9 @@ RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
     mvect = Vector_new(magnitude, magnitude);
     Vector_mult(&ray_vec, &mvect);
     
-    Vect* p1 = edge.a;
-    Vect* p2 = edge.b;
-    Vect edge_vec = Vector_new(p2->x - p1->x, p2->y - p1->y);
+    Vect p1 = edge.a;
+    Vect p2 = edge.b;
+    Vect edge_vec = Vector_new(p2.x - p1.x, p2.y - p1.y);
 
     // 2. Compute 2D cross product: r x s
     float r_cross_s = (float)(ray_vec.x * edge_vec.y - ray_vec.y * edge_vec.x);
@@ -542,7 +539,7 @@ RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
     }
 
     // Vector from edge start point to ray origin (qp)
-    Vect qp = Vector_new(origin.x - p1->x, origin.y - p1->y);
+    Vect qp = Vector_new(origin.x - p1.x, origin.y - p1.y);
 
     // 3. Solve parametric factors t and u
     // t: normalized position along ray [0.0 = origin, 1.0 = end of ray]
@@ -644,7 +641,7 @@ int Work() {
                     default:
                         break;
                 }
-                world.player.body.acceleration = plrMovementVect;
+                world.player.body.moveDirection = plrMovementVect;
             } else if (event.type == SDL_EVENT_KEY_UP) {
 
                 SDL_Keycode key = event.key.key;
@@ -658,7 +655,7 @@ int Work() {
                 } else if (key == SDLK_DOWN && plrMovementVect.y == -1) {
                     plrMovementVect.y = 0;
                 }
-                world.player.body.acceleration = plrMovementVect;
+                world.player.body.moveDirection = plrMovementVect;
             }
         }
 
@@ -678,38 +675,47 @@ int Work() {
             world.player.body.velocity.y *= 0.75;
         }
 
-        // apply motion
-        Vector_add(&(world.player.body.position), &(world.player.body.velocity));
-
         // decelerate faster if accelerating in opposite direction to velocity
         // bitwise op to check first number
-        // int xDecel = world.player.body.acceleration.x & world.player.body.velocity.x;
-        // int yDecel = world.player.body.acceleration.y & world.player.body.velocity.y;
+        int xDecel = world.player.body.acceleration.x ^ world.player.body.velocity.x;
+        int yDecel = world.player.body.acceleration.y ^ world.player.body.velocity.y;
 
-        // if (xDecel < 0) {
-        //     world.player.body.velocity.x *= 0.75;
-        // }
-
-        // if (yDecel < 0) {
-        //     world.player.body.velocity.y *= 0.75;
-        // }
-
-        // check if colliding with walls
-
-        int index = 0;
-
-        print("%d\n",world.walls.size);
-
-        while (world.walls.size < index) {
-            Edge collider = &world.walls.data[index++];
-            // do dist check later
-            RaycastHit ray;
-            ray = raycast(world.player.body.position, world.player.body.velocity, 1, *collider);
-            print("%d\n", ray.hit);
+        if (xDecel < 0) {
+            world.player.body.velocity.x *= 0.75;
         }
 
+        if (yDecel < 0) {
+            world.player.body.velocity.y *= 0.75;
+        }
 
-        // print("%d, %d\n", world.player.body.acceleration.x, world.player.body.acceleration.y);
+        int collisionIndex = 0;
+        for (; collisionIndex < world.walls.size; collisionIndex++) {
+            Edge collider = world.walls.data[collisionIndex];
+
+            Vect origin = world.player.body.position;
+            int projY = world.player.body.velocity.y;
+            int projX = world.player.body.velocity.x;
+            int mag = sqrt(pow(projY, 2) + pow(projX, 2));
+    
+            RaycastHit ray = raycast(origin, Vector_new(projX, projY), mag, collider);
+            if (ray.hit) {
+                print("hit\n");
+                collisionIndex = -1;
+                break;
+            }
+        }
+        
+
+        // Set player acceleration to input direction
+        if (collisionIndex > 0) {
+            world.player.body.acceleration = world.player.body.moveDirection;
+        }
+
+        // Apply motion
+        Vector_add(&(world.player.body.position), &(world.player.body.velocity));
+
+        // apply motion
+        Vector_add(&(world.player.body.position), &(world.player.body.velocity));
         
         // draw player
         ModifyPixels(surface, world.player.body.position.x, -world.player.body.position.y, 20, 20, 255, 255, 255, 255);
