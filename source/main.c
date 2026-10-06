@@ -398,9 +398,7 @@ typedef struct {
     Face* faces;
 } Mesh;
 
-typedef struct {
-    Uint32* image;
-} Sprite;
+typedef struct {} Sprite; // defined in image.c
 
 typedef struct {
     Sprite sprite;
@@ -456,7 +454,7 @@ World initEngine() {
     Edge edge;
     Vect v = Vector_new(200, 0);
     edge.a = v;
-    Vect v1 = Vector_new(200, 200);
+    Vect v1 = Vector_new(200, -200);
     edge.b = v1;
     edgeArrayPushBack(&colliders, edge);
 
@@ -517,46 +515,26 @@ typedef struct {
     float distance; // Distance from origin to the hit point
 } RaycastHit;
 
-RaycastHit raycast(Vect origin, Vect direction, int magnitude, Edge edge) {
+RaycastHit raycast(Vect origin, Vect ray_vec, Edge edge) {
     RaycastHit result = { .hit = false, .point = {0, 0}, .distance = 0.0f };
-
-    Vect ray_vec;
-    ray_vec = Vector_new(direction.x, direction.y);
-    Vect mvect;
-    mvect = Vector_new(magnitude, magnitude);
-    Vector_mult(&ray_vec, &mvect);
     
     Vect p1 = edge.a;
     Vect p2 = edge.b;
     Vect edge_vec = Vector_new(p2.x - p1.x, p2.y - p1.y);
 
-    // 2. Compute 2D cross product: r x s
     float r_cross_s = (float)(ray_vec.x * edge_vec.y - ray_vec.y * edge_vec.x);
+    if (r_cross_s == 0.0f) return result;
 
-    // If parallel or collinear, no unique intersection point exists
-    if (r_cross_s == 0.0f) {
-        return result;
-    }
-
-    // Vector from edge start point to ray origin (qp)
     Vect qp = Vector_new(origin.x - p1.x, origin.y - p1.y);
 
-    // 3. Solve parametric factors t and u
-    // t: normalized position along ray [0.0 = origin, 1.0 = end of ray]
-    // u: normalized position along edge [0.0 = p1, 1.0 = p2]
     float t = (float)(qp.x * edge_vec.y - qp.y * edge_vec.x) / r_cross_s;
     float u = (float)(qp.x * ray_vec.y - qp.y * ray_vec.x) / r_cross_s;
 
-    // 4. Verify valid intersection bounds
     if (t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f) {
         result.hit = true;
-
-        // Calculate exact point on the edge: origin + (t * ray_vec)
         result.point.x = origin.x + (int)(t * ray_vec.x);
         result.point.y = origin.y + (int)(t * ray_vec.y);
-
-        // Distance = t * total_ray_magnitude
-        result.distance = t * (float)magnitude;
+        result.distance = t * sqrtf(ray_vec.x * ray_vec.x + ray_vec.y * ray_vec.y);
     }
 
     return result;
@@ -616,6 +594,8 @@ int Work() {
     Vect plrMovementVect;
     plrMovementVect = Vector_new(0, 0);
 
+    // test image
+
     while (running) {
         Uint64 frameStart = SDL_GetTicks();
 
@@ -627,10 +607,10 @@ int Work() {
 
                 switch (event.key.key) {
                     case SDLK_UP:
-                        plrMovementVect.y = 1;
+                        plrMovementVect.y = -1;
                         break;
                     case SDLK_DOWN:
-                        plrMovementVect.y = -1;
+                        plrMovementVect.y = 1;
                         break;
                     case SDLK_LEFT:
                         plrMovementVect.x = -1;
@@ -650,9 +630,9 @@ int Work() {
                     plrMovementVect.x = 0;
                 } else if (key == SDLK_LEFT && plrMovementVect.x == -1) {
                     plrMovementVect.x = 0;
-                } else if (key == SDLK_UP && plrMovementVect.y == 1) {
+                } else if (key == SDLK_UP && plrMovementVect.y == -1) {
                     plrMovementVect.y = 0;
-                } else if (key == SDLK_DOWN && plrMovementVect.y == -1) {
+                } else if (key == SDLK_DOWN && plrMovementVect.y == 1) {
                     plrMovementVect.y = 0;
                 }
                 world.player.body.moveDirection = plrMovementVect;
@@ -688,39 +668,50 @@ int Work() {
             world.player.body.velocity.y *= 0.75;
         }
 
-        int collisionIndex = 0;
-        for (; collisionIndex < world.walls.size; collisionIndex++) {
-            Edge collider = world.walls.data[collisionIndex];
+        // forward ray
+        Vect origin = world.player.body.position;
+        int projY = world.player.body.velocity.y;
+        int projX = world.player.body.velocity.x;
+        Vect proj = Vector_new(projX, projY);
+        int mag = sqrt(pow(projX, 2) + pow(projY, 2));
 
-            Vect origin = world.player.body.position;
-            int projY = world.player.body.velocity.y;
-            int projX = world.player.body.velocity.x;
-            int mag = sqrt(pow(projY, 2) + pow(projX, 2));
+        for (int collisionIndex = 0; collisionIndex < world.walls.size; collisionIndex++) {
+            // Ass collision logic because I'm fucking stupid or something
+            Edge collider = world.walls.data[collisionIndex];
     
-            RaycastHit ray = raycast(origin, Vector_new(projX, projY), mag, collider);
+            RaycastHit ray = raycast(origin, proj, collider);
             if (ray.hit) {
-                print("hit\n");
-                collisionIndex = -1;
-                break;
+                // skips movement
+                // check dot of proj and hit
+                float dot = ray.point.x * (projX + origin.x) + ray.point.y * (projY + origin.y);
+                if (dot < 0) {
+                    continue;
+                }
+
+                Vector_sub(&world.player.body.position, &proj);
+                world.player.body.velocity = Vector_new(0, 0);
+                world.player.body.acceleration = Vector_new(0, 0);
+                goto SKIP_MOVEMENT;
             }
         }
-        
 
         // Set player acceleration to input direction
-        if (collisionIndex > 0) {
-            world.player.body.acceleration = world.player.body.moveDirection;
-        }
-
+        world.player.body.acceleration = world.player.body.moveDirection;
         // Apply motion
         Vector_add(&(world.player.body.position), &(world.player.body.velocity));
 
-        // apply motion
-        Vector_add(&(world.player.body.position), &(world.player.body.velocity));
-        
+        SKIP_MOVEMENT:
+
         // draw player
-        ModifyPixels(surface, world.player.body.position.x, -world.player.body.position.y, 20, 20, 255, 255, 255, 255);
+        ModifyPixels(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, 5, 5, 255, 255, 255, 255);
         // draw edge
-        ModifyPixels(surface, 200, 0, 10, 200, 255, 0, 0, 255);
+        ModifyPixels(surface, 200, 0, 1, 200, 255, 0, 0, 255);
+        // draw movement vect
+        for (int y = 0; y < mag; y++) {
+            ModifyPixel(surface, origin.x + world.player.body.moveDirection.x * y,
+                origin.y + world.player.body.moveDirection.y * y, 0, 255, 0, 255);
+        }
+        ModifyPixels(surface, projX + world.player.body.position.x - 2, projY + world.player.body.position.y - 2, 5, 5, 0, 0, 255, 255);
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
