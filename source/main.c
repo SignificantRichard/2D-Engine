@@ -656,14 +656,11 @@ int Work() {
         }
 
         int curVel = sqrt(pow(world.player.body.velocity.x, 2) + pow(world.player.body.velocity.y, 2));
-
         if (curVel <= world.player.body.maxSpeed) {
             Vector_add(&(world.player.body.velocity), &(world.player.body.acceleration));
         }
 
-        Vector_add(&(world.player.body.velocity), &(world.player.body.acceleration));
-
-        // if acceleration is 0, slow down
+        // Apply friction/deceleration if no input
         if (world.player.body.acceleration.x == 0) {
             world.player.body.velocity.x *= 0.75;
         }
@@ -671,69 +668,37 @@ int Work() {
             world.player.body.velocity.y *= 0.75;
         }
 
-        // decelerate faster if accelerating in opposite direction to velocity
-        // bitwise op to check first number
-        int xDecel = world.player.body.acceleration.x ^ world.player.body.velocity.x;
-        int yDecel = world.player.body.acceleration.y ^ world.player.body.velocity.y;
+        // Add input direction to acceleration
+        world.player.body.acceleration = world.player.body.moveDirection;
 
-        if (xDecel < 0) {
-            world.player.body.velocity.x *= 0.75;
-        }
-
-        if (yDecel < 0) {
-            world.player.body.velocity.y *= 0.75;
-        }
-
-        // forward ray
-        Vect origin = world.player.body.position;
-        int projY = world.player.body.velocity.y;
-        int projX = world.player.body.velocity.x;
-        Vect proj = Vector_new(projX, projY);
-        int mag = sqrt(pow(projX, 2) + pow(projY, 2));
-
-        for (int collisionIndex = 0; collisionIndex < world.walls.size; collisionIndex++) {
-            // Ass collision logic because I'm fucking stupid or something
-            Edge collider = world.walls.data[collisionIndex];
-    
-            RaycastHit ray = raycast(origin, proj, collider);
-            if (ray.hit) {
-                world.player.body.position.x = ray.point.x;
-                world.player.body.position.y = ray.point.y;
-                Vector_sub(&world.player.body.position, &proj);
-                Vector_sub(&world.player.body.position, &proj);
-                world.player.body.velocity = Vector_new(0, 0);
-                world.player.body.acceleration = Vector_new(0, 0);
+        world.player.body.position.x += world.player.body.velocity.x;
+        for (int i = 0; i < world.walls.size; i++) {
+            Edge collider = world.walls.data[i];
+            // Create a bounding check or raycast from slightly behind the player
+            Vect rayVec = { .x = world.player.body.velocity.x, .y = 0 };
+            RaycastHit ray = raycast(world.player.body.position, rayVec, collider);
+            if (ray.hit && ray.distance <= 16.0f) { // 4.0f acts as a small player-radius buffer
+                world.player.body.position.x -= world.player.body.velocity.x;
+                world.player.body.velocity.x = 0;
             }
         }
 
-        // only accelerate if the next two steps can be made
-        proj.x += world.player.body.acceleration.x * 3;
-        proj.y += world.player.body.acceleration.y * 3;
-
-
-        for (int collisionIndex = 0; collisionIndex < world.walls.size; collisionIndex++) {
-            Edge collider = world.walls.data[collisionIndex];
-            RaycastHit ray = raycast(origin, proj, collider);
-            if (!ray.hit) {
-                // Set acceleration to input direction
-                world.player.body.acceleration = world.player.body.moveDirection;
+        world.player.body.position.y += world.player.body.velocity.y;
+        for (int i = 0; i < world.walls.size; i++) {
+            Edge collider = world.walls.data[i];
+            Vect rayVec = { .x = 0, .y = world.player.body.velocity.y };
+            RaycastHit ray = raycast(world.player.body.position, rayVec, collider);
+            if (ray.hit && ray.distance <= 16.0f) {
+                world.player.body.position.y -= world.player.body.velocity.y;
+                world.player.body.velocity.y = 0;
             }
         }
-
-        // Apply motion
-        Vector_add(&(world.player.body.position), &(world.player.body.velocity));
 
         // draw player
         drawSprite(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, &world.player.sprite);
         // ModifyPixels(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, 5, 5, 255, 255, 255, 255);
         // draw edge
         ModifyPixels(surface, 200, 0, 1, 200, 255, 0, 0, 255);
-        // draw movement vect
-        for (int y = 0; y < mag; y++) {
-            ModifyPixel(surface, origin.x + world.player.body.moveDirection.x * y,
-                origin.y + world.player.body.moveDirection.y * y, 0, 255, 0, 255);
-        }
-        ModifyPixels(surface, projX + world.player.body.position.x - 2, projY + world.player.body.position.y - 2, 5, 5, 0, 0, 255, 255);
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
