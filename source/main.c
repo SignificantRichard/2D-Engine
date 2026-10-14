@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 #include <unistd.h>
 #include <math.h>
+#include "image.h"
 
 // Let me be clear -Barack Barack
 #define true 1
@@ -398,8 +399,6 @@ typedef struct {
     Face* faces;
 } Mesh;
 
-typedef struct {} Sprite; // defined in image.c
-
 typedef struct {
     Sprite sprite;
     Mesh mesh;
@@ -548,6 +547,21 @@ int lazyApproxSqrt(int x) {
     return -x*(x-INTERNAL_WIDTH)/INTERNAL_WIDTH/3;
 }
 
+void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
+    for (int i = 0; i < sprite->size; i++) {
+        int localX = i % sprite->width;
+        int localY = i / sprite->height;
+        
+        uint32_t color = sprite->data[i];
+        int r = getColorFragment(color, 3);
+        int g = getColorFragment(color, 2);
+        int b = getColorFragment(color, 1);
+        int a = getColorFragment(color, 0);
+
+        ModifyPixel(surface, x + localX, y + localY, r, g, b, a);
+    }
+}
+
 // Do game checks here
 void tickHit(World* world) {
 }
@@ -593,8 +607,10 @@ int Work() {
     world = initEngine();
     Vect plrMovementVect;
     plrMovementVect = Vector_new(0, 0);
-
-    // test image
+    
+    Sprite image;
+    image = constructSprite(16, 16);
+    world.player.sprite = image;
 
     while (running) {
         Uint64 frameStart = SDL_GetTicks();
@@ -681,29 +697,35 @@ int Work() {
     
             RaycastHit ray = raycast(origin, proj, collider);
             if (ray.hit) {
-                // skips movement
-                // check dot of proj and hit
-                float dot = ray.point.x * (projX + origin.x) + ray.point.y * (projY + origin.y);
-                if (dot < 0) {
-                    continue;
-                }
-
+                world.player.body.position.x = ray.point.x;
+                world.player.body.position.y = ray.point.y;
+                Vector_sub(&world.player.body.position, &proj);
                 Vector_sub(&world.player.body.position, &proj);
                 world.player.body.velocity = Vector_new(0, 0);
                 world.player.body.acceleration = Vector_new(0, 0);
-                goto SKIP_MOVEMENT;
             }
         }
 
-        // Set player acceleration to input direction
-        world.player.body.acceleration = world.player.body.moveDirection;
+        // only accelerate if the next two steps can be made
+        proj.x += world.player.body.acceleration.x * 3;
+        proj.y += world.player.body.acceleration.y * 3;
+
+
+        for (int collisionIndex = 0; collisionIndex < world.walls.size; collisionIndex++) {
+            Edge collider = world.walls.data[collisionIndex];
+            RaycastHit ray = raycast(origin, proj, collider);
+            if (!ray.hit) {
+                // Set acceleration to input direction
+                world.player.body.acceleration = world.player.body.moveDirection;
+            }
+        }
+
         // Apply motion
         Vector_add(&(world.player.body.position), &(world.player.body.velocity));
 
-        SKIP_MOVEMENT:
-
         // draw player
-        ModifyPixels(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, 5, 5, 255, 255, 255, 255);
+        drawSprite(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, &world.player.sprite);
+        // ModifyPixels(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, 5, 5, 255, 255, 255, 255);
         // draw edge
         ModifyPixels(surface, 200, 0, 1, 200, 255, 0, 0, 255);
         // draw movement vect
