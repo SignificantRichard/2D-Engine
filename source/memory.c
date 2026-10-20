@@ -1,3 +1,5 @@
+// Memory currently only supports up to 32 bits
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -144,8 +146,6 @@ void defragElements(Note* notepad) {
     }
 }
 
-
-
 int main() {
     Note memoryPager = createNotepad();
 
@@ -162,7 +162,10 @@ int main() {
     defragElements(&memoryPager);
 
     for (int i = 0; i < 64; i++) {
-        printf("%d -> %d\n", memoryPager.addresses[i], memoryPager.page[i]);
+        if (memoryPager.addresses[i] == 0xffff) {
+            continue;
+        }
+        printf("[true slot]: %d addr slot %d -> number %d\n", i, memoryPager.addresses[i], memoryPager.page[memoryPager.addresses[i]]);
     }
 
 
