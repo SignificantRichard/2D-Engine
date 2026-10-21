@@ -6,6 +6,7 @@
 #include <math.h>
 #include "image.h"
 #include "memory.h"
+#include "files.h"
 
 // Let me be clear -Barack Barack
 #define true 1

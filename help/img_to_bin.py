@@ -50,7 +50,7 @@ def main():
         print(pallet)
         print(colorTable)
 
-        if len(pallet) > 0xffff:
+        if len(pallet) * 3 > 0xffff:
             print("image is too complicated, will not attempt")
             continue
 
@@ -61,7 +61,7 @@ def main():
         with open("./images/" + fileName.replace(".jpg", ""), "w") as f:
             f.write("")
         with open("./images/" + fileName.replace(".jpg", ""), "ab") as f:
-            f.write(toChars(len(pallet)).encode("utf-8"))
+            f.write(toChars(len(pallet) * 3).encode("utf-8"))
             for color in pallet:
                 f.write(toChar(color[0]).encode("utf-8"))
                 f.write(toChar(color[1]).encode("utf-8"))
