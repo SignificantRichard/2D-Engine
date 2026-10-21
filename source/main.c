@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "image.h"
+#include "memory.h"
 
 // Let me be clear -Barack Barack
 #define true 1

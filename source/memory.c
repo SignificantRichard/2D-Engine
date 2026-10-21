@@ -3,17 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
-// a sheet of memory
-typedef struct {
-    uint32_t* page; // this keeps track of data
-    uint16_t elements; // this keeps track of how many elements are in the page
-    uint16_t size;
-    uint16_t* addresses; // this will likely be very fragmented
-    uint16_t availableAddress; // keep track of next available address (closest to 0)
-    uint16_t addressSize;
-    uint16_t lastAddress;
-} Note;
+#include "memory.h"
 
 // creates notepad with large size to prevent runtime fracture
 Note createNotepad() {
@@ -144,29 +134,4 @@ void defragElements(Note* notepad) {
             }
         }
     }
-}
-
-int main() {
-    Note memoryPager = createNotepad();
-
-
-    for (int i = 0; i < 64; i++) {
-        uint16_t addr = addElement(&memoryPager, i);
-    }
-    // test
-    printf("REMOVING\n");
-
-    for (int i = 0; i < 32; i++) {
-        removeElement(&memoryPager, i);
-    }
-    defragElements(&memoryPager);
-
-    for (int i = 0; i < 64; i++) {
-        if (memoryPager.addresses[i] == 0xffff) {
-            continue;
-        }
-        printf("[true slot]: %d addr slot %d -> number %d\n", i, memoryPager.addresses[i], memoryPager.page[memoryPager.addresses[i]]);
-    }
-
-
 }
