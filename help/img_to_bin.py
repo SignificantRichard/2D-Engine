@@ -1,88 +1,69 @@
-# Windows users can eat dirt with this script
-
-import os, sys
+import os
 from PIL import Image
 
-def toChars(value: int): # split 16 bit ints to 8 bit chars
-    conv = []
-    conv.append(value >> 8 & 0x00ff)
-    conv.append(value & 0x00ff)
-    out = ""
-    for v in conv:
-        out += chr(v)
-    return out
+def toChars(value: int): # split 16 bit ints into 2 raw bytes
+    return bytes([(value >> 8) & 0xff, value & 0xff])
 
-def toChar(value: int):
-    conv = []
-    conv.append(value & 0x00ff)
-    out = ""
-    for v in conv:
-        out += chr(v)
-    return out
-
+def toChar(value: int): # 8 bit int into 1 raw byte
+    return bytes([value & 0xff])
 
 def main():
     launchDir = os.getcwd()
-
     os.chdir("./source/res")
 
-    # convert images to bin files
-
-    # open file
     imageFileNames = os.listdir("./raw_images")
-
     total = 0
 
     for fileName in imageFileNames:
+        if not fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+            continue
+            
         pallet = []
         colorTable = []
-        image = Image.open("./raw_images/" + fileName)
+        image = Image.open("./raw_images/" + fileName).convert("RGB")
         width, height = image.size
-        print(width, height)
+        print(f"Processing {fileName}: {width}x{height}")
 
-        for x in range(width):
-            for y in range(height):
+        for y in range(height):
+            for x in range(width):
                 color = image.getpixel((x, y))
                 if color in pallet:
-                    colorTable.append([i for i in range(len(pallet)) if pallet[i] == color][0])
-                    print("a", [i for i in range(len(pallet)) if pallet[i] == color][0])
+                    colorTable.append(pallet.index(color))
                 else:
                     pallet.append(color)
                     colorTable.append(len(pallet) - 1)
-                    print("b", len(pallet) - 1)
 
         if len(pallet) * 3 > 0xffff:
-            print("image is too complicated, will not attempt")
+            print("Image is too complicated, will not attempt")
             continue
 
-        # First part will be header size
-        # Next will be size of size
-        # Next will be size
-        # Next will be the pallet
-        # Next will be colors
+        out_filename = "./images/" + fileName.split(".")[0]
+        
+        # Open file in binary write mode ('wb')
+        with open(out_filename, "wb") as f:
+            writtenWidth = toChars(width)
+            writtenHeight = toChars(height)
 
-        with open("./images/" + fileName.split(".")[0], "w") as f:
-            f.write("")
-        with open("./images/" + fileName.split(".")[0], "ab") as f:
-            writtenWidth = toChars(width).encode("utf-8")
-            writtenHeight = toChars(height).encode("utf-8")
+            header_size = len(pallet) * 3 + len(writtenWidth) + len(writtenHeight) + 2
+            f.write(toChars(header_size))
 
-            f.write(toChars(len(pallet) * 3 + writtenWidth.__len__() + writtenHeight.__len__() + 2).encode("utf-8"))
-
-            f.write(toChar(writtenWidth.__len__()).encode("utf-8"))
-            f.write(toChar(writtenHeight.__len__()).encode("utf-8"))
+            f.write(toChar(len(writtenWidth)))
+            f.write(toChar(len(writtenHeight)))
             
             f.write(writtenWidth)
             f.write(writtenHeight)
 
             for color in pallet:
-                f.write(toChar(color[0]).encode("utf-8"))
-                f.write(toChar(color[1]).encode("utf-8"))
-                f.write(toChar(color[2]).encode("utf-8"))
+                f.write(toChar(color[0]))
+                f.write(toChar(color[1]))
+                f.write(toChar(color[2]))
 
             for element in colorTable:
-                f.write(toChar(element).encode("utf-8"))
+                f.write(toChar(element))
+                
         total += 1
-    print("Completed", total, "of", len(imageFileNames), "images")
+        
+    print(f"Completed {total} of {len(imageFileNames)} images")
 
-main()
+if __name__ == "__main__":
+    main()

@@ -51,8 +51,12 @@ int getColorFragment(uint32_t color, int place) {
 
 Sprite loadImageAsSprite(char* path) {
     BinaryFileContents imageData = readBinFromFile(path);
-    uint16_t headerLength = (imageData.content[0] << 8) + imageData.content[1];
+    if (imageData.content == NULL || imageData.size == 0) {
+        fprintf(stderr, "Failed to read image file: %s\n", path);
+        exit(EXIT_FAILURE);
+    }
 
+    uint16_t headerLength = (imageData.content[0] << 8) + imageData.content[1];
     uint8_t widthLength = imageData.content[2];
     uint8_t heightLength = imageData.content[3];
 
@@ -69,24 +73,25 @@ Sprite loadImageAsSprite(char* path) {
 
     Sprite sprite = constructSprite(width, height);
 
-    // Use a separate pixel index counter
-    int pixelIndex = 0;
-    for (int i = headerLength; i < (height * width * 3) + headerLength; i += 3) {
-        if (pixelIndex >= sprite.size) break;
+    uint8_t* palette = &imageData.content[8];
 
-        uint32_t color = makeColor(
-            imageData.content[i],
-            imageData.content[i + 1],
-            imageData.content[i + 2],
-            255
-        );
+    int colorTableOffset = headerLength + 2;
 
-        int x = pixelIndex % width;
-        int y = pixelIndex / width;
+    for (int i = 0; i < width * height; i++) {
+        if (colorTableOffset + i >= imageData.size) break;
+
+        uint8_t paletteIndex = imageData.content[colorTableOffset + i];
+        int r = palette[paletteIndex * 3 + 0];
+        int g = palette[paletteIndex * 3 + 1];
+        int b = palette[paletteIndex * 3 + 2];
+
+        uint32_t color = makeColor(r, g, b, 255);
+        int x = i % width;
+        int y = i / width;
         setPixel(&sprite, x, y, color);
-        pixelIndex++;
     }
 
+    // Free the raw file content buffer to prevent memory leaks
     free(imageData.content);
 
     return sprite;

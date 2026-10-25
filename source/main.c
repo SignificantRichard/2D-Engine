@@ -552,7 +552,7 @@ int lazyApproxSqrt(int x) {
 void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
     for (int i = 0; i < sprite->size; i++) {
         int localX = i % sprite->width;
-        int localY = i / sprite->height;
+        int localY = i / sprite->width;
         
         uint32_t color = sprite->data[i];
         int r = getColorFragment(color, 3);
