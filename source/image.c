@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "image.h"
+#include "files.h"
 
 Sprite constructSprite(int width, int height) {
     Sprite sprite;
@@ -46,4 +47,47 @@ int getColorFragment(uint32_t color, int place) {
     // mask
     color &= 0x000000ff;
     return (int)color;
+}
+
+Sprite loadImageAsSprite(char* path) {
+    BinaryFileContents imageData = readBinFromFile(path);
+    uint16_t headerLength = (imageData.content[0] << 8) + imageData.content[1];
+
+    uint8_t widthLength = imageData.content[2];
+    uint8_t heightLength = imageData.content[3];
+
+    uint16_t width = 0;
+    uint16_t height = 0;
+
+    int idx = 4;
+    for (int i = 0; i < widthLength; i++) {
+        width = (width << 8) + imageData.content[idx++];
+    }
+    for (int i = 0; i < heightLength; i++) {
+        height = (height << 8) + imageData.content[idx++];
+    }
+
+    Sprite sprite = constructSprite(width, height);
+
+    // Use a separate pixel index counter
+    int pixelIndex = 0;
+    for (int i = headerLength; i < (height * width * 3) + headerLength; i += 3) {
+        if (pixelIndex >= sprite.size) break;
+
+        uint32_t color = makeColor(
+            imageData.content[i],
+            imageData.content[i + 1],
+            imageData.content[i + 2],
+            255
+        );
+
+        int x = pixelIndex % width;
+        int y = pixelIndex / width;
+        setPixel(&sprite, x, y, color);
+        pixelIndex++;
+    }
+
+    free(imageData.content);
+
+    return sprite;
 }

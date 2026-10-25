@@ -421,7 +421,7 @@ RenderedBody createRenderedBody() {
     body = Body_new();
     render.body = body;
     
-    Sprite sprite;
+    Sprite sprite = loadImageAsSprite("./source/res/images/aksenapati_snow_mountain");
     render.sprite = sprite;
 
     return render;
@@ -609,10 +609,6 @@ int Work() {
     world = initEngine();
     Vect plrMovementVect;
     plrMovementVect = Vector_new(0, 0);
-    
-    Sprite image;
-    image = constructSprite(16, 16);
-    world.player.sprite = image;
 
     while (running) {
         Uint64 frameStart = SDL_GetTicks();
@@ -698,7 +694,6 @@ int Work() {
 
         // draw player
         drawSprite(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, &world.player.sprite);
-        // ModifyPixels(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, 5, 5, 255, 255, 255, 255);
         // draw edge
         ModifyPixels(surface, 200, 0, 1, 200, 255, 0, 0, 255);
 

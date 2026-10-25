@@ -1,4 +1,10 @@
 // Memory currently only supports up to 32 bits
+// If writing 0xffffffff, it will be marked as empty.
+// Once elements larger than 32 bits are supported, this will not be a problem as
+// 10 will mark head
+// 01 will mark tail
+// 00 will mark middle or no association
+// 11 will never be used unless we want to mark this as empty
 
 #include <stdio.h>
 #include <stdlib.h>

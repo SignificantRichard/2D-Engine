@@ -3,13 +3,7 @@
 #include <sys/stat.h>
 #include <stdint.h>
 #include <string.h>
-#include "memory.h"
 #include "files.h"
-
-typedef struct {
-    uint8_t* content;
-    size_t size;
-} BinaryFileContents;
 
 BinaryFileContents readBinFromFile(const char* fileName) {
     struct stat info;
@@ -62,33 +56,4 @@ BinaryFileContents readBinFromFile(const char* fileName) {
 
     // Return the valid pointer to the copied integer data
     return binFileContent;
-}
-
-Note loadImage(const char* fileName) {
-    BinaryFileContents binFileContent = readBinFromFile("./source/res/images/aksenapati_snow_mountain");
-    Note memoryPager = createNotepad();
-
-    if (binFileContent.content != NULL) {
-
-        uint32_t headerSize = (binFileContent.content[0] << 8) + binFileContent.content[1];
-
-        addElement(&memoryPager, headerSize);
-
-        // header
-        for (int i = 2; i < headerSize + 2; i += 3) {
-            uint32_t color = binFileContent.content[i] << 16;
-            color += binFileContent.content[i + 1] << 8;
-            color += binFileContent.content[i + 2];
-            addElement(&memoryPager, binFileContent.content[i]);
-        }
-
-        for (int i = headerSize + 2; i < binFileContent.size; i += 2) {
-            addElement(&memoryPager, binFileContent.content[i] << 16 + binFileContent.content[i + 1]);
-        }
-
-        // Always free the allocated memory when finished
-        free(binFileContent.content);
-    }
-
-    return memoryPager;
 }
