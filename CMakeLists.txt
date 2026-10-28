@@ -6,6 +6,8 @@ find_package(SDL3 REQUIRED)
 set(SOURCE_FILES 
     ./source/vector.c
     ./source/body.c
+    ./source/edge.c
+    ./source/face.c
     ./source/files.c 
     ./source/image.c 
     ./source/memory.c
