@@ -1,26 +1,19 @@
-# AVSEMBR
-### A very uhhhhh... smart engine made by Richard
+# A Simple Movement and Rendering Engine
+
+2026, Wen Xin Gao
+
+Learning to write a physics engine. Figuring out systems before I move onto 3D
+
+## Requirements
+- SDL3
+- A OpenGL or Vulkan compatable GPU (probably)
+- A GPU that allows the CPU to access its memory
+
+## Features
+- Acceleration based movement
+- Collisions
+- Sprite rendering
 
 ---
 
-<p>
-This is a very smart engine made by me...
-This supports acceleration based movement.
-Any documentation can be found in the tenth circle.
-
-Issues can be sent to `/dev/null`
-</p>
-
-- [ ] Is complete
-- [ ] Is abandoned
-
-| My Engine | Any Commercial Engine |
-| --- | --- |
-| Written while too tired to think | Written by people smarter than us |
-| Tables are fun to make | These people are too busy to make this |
-
-<p>Therefore my engine is better</p>
-
-### installation
-
-<p>Documentation can be found in hell<p>
+This project is in its infancy. I don't know if it will go past said infancy.
