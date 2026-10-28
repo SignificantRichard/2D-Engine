@@ -13,7 +13,8 @@ RaycastHit raycast(Vect origin, Vect ray_vec, Edge edge) {
     float r_cross_s = (float)(ray_vec.x * edge_vec.y - ray_vec.y * edge_vec.x);
     if (r_cross_s == 0.0f) return result;
 
-    Vect qp = Vector_new(origin.x - p1.x, origin.y - p1.y);
+    // Fixed: changed from origin - p1 to p1 - origin
+    Vect qp = Vector_new(p1.x - origin.x, p1.y - origin.y);
 
     float t = (float)(qp.x * edge_vec.y - qp.y * edge_vec.x) / r_cross_s;
     float u = (float)(qp.x * ray_vec.y - qp.y * ray_vec.x) / r_cross_s;

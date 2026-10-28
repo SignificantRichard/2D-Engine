@@ -39,6 +39,7 @@ void edgeArrayPushBack(EdgeArray* arr, Edge add) {
     }
     arr->data[arr->size] = add;
     arr->size++;
+    printf("%d\n", arr->size);
 }
 
 // Replace an Edge at a given index

@@ -15,11 +15,6 @@ World initEngine() {
     world.player = createRenderedBody();
     world.player.body.velocity = Vector_new(0, 0); // for some reason the player's velocity is not init
 
-    EdgeArray colliders;
-    colliders = createEdgeArray(0);
-
-    world.walls = colliders;
-
     Camera camera;
     camera.target = &world.player.body;
     world.camera = camera;
@@ -80,6 +75,29 @@ void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
         int a = getColorFragment(color, 0);
 
         ModifyPixel(surface, x + localX, y + localY, r, g, b, a);
+    }
+}
+
+void drawLine(SDL_Surface* surface, int x0, int y0, int x1, int y1, int r, int g, int b, int a) {
+    int dx = abs(x1 - x0);
+    int dy = abs(y1 - y0);
+    int sx = (x0 < x1) ? 1 : -1;
+    int sy = (y0 < y1) ? 1 : -1;
+    int err = dx - dy;
+
+    while (1) {
+        ModifyPixel(surface, x0, y0, r, g, b, a);
+
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y0 += sy;
+        }
     }
 }
 
@@ -147,6 +165,12 @@ int Work() {
         for (int i = 0; i < renderQueue->size; i++) {
             RenderedBody* body = renderQueue->sprites[i];
             drawSprite(surface, body->body.position.x, body->body.position.y, &body->sprite);
+        }
+
+        // render collisions (walls)
+        for (int i = 0; i < world.walls.size; i++) {
+            Edge edge = world.walls.data[i];
+            drawLine(surface, (int)edge.a.x, (int)edge.a.y, (int)edge.b.x, (int)edge.b.y, 255, 0, 255, 255);
         }
 
         // Upload surface pixel data to GPU texture

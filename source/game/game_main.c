@@ -120,4 +120,17 @@ void onWorldGen(World* world) {
 
     renderQueue = createRenderQueue();
     renderQueuePushBack(&renderQueue, &world->player);
+
+    EdgeArray colliders;
+    colliders = createEdgeArray(0);
+
+    // test walls
+    Edge edge;
+    Vect v = Vector_new(200, 0);
+    edge.a = v;
+    Vect v1 = Vector_new(200, 200);
+    edge.b = v1;
+    edgeArrayPushBack(&colliders, edge);
+    
+    world->walls = colliders;
 }
