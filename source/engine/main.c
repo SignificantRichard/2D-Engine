@@ -16,13 +16,6 @@ World initEngine() {
 
     EdgeArray colliders;
     colliders = createEdgeArray(0);
-    // set up a collider (temp)
-    Edge edge;
-    Vect v = Vector_new(200, 0);
-    edge.a = v;
-    Vect v1 = Vector_new(200, -200);
-    edge.b = v1;
-    edgeArrayPushBack(&colliders, edge);
 
     world.walls = colliders;
 
@@ -74,38 +67,6 @@ void ModifyPixels(SDL_Surface* surface, int x, int y, int w, int h, int r, int g
     }
 }
 
-// Struct to store intersection results
-typedef struct {
-    int hit;
-    Vect point;     // Exact (x, y) coordinates of the hit
-    float distance; // Distance from origin to the hit point
-} RaycastHit;
-
-RaycastHit raycast(Vect origin, Vect ray_vec, Edge edge) {
-    RaycastHit result = { .hit = 0, .point = {0, 0}, .distance = 0.0f };
-    
-    Vect p1 = edge.a;
-    Vect p2 = edge.b;
-    Vect edge_vec = Vector_new(p2.x - p1.x, p2.y - p1.y);
-
-    float r_cross_s = (float)(ray_vec.x * edge_vec.y - ray_vec.y * edge_vec.x);
-    if (r_cross_s == 0.0f) return result;
-
-    Vect qp = Vector_new(origin.x - p1.x, origin.y - p1.y);
-
-    float t = (float)(qp.x * edge_vec.y - qp.y * edge_vec.x) / r_cross_s;
-    float u = (float)(qp.x * ray_vec.y - qp.y * ray_vec.x) / r_cross_s;
-
-    if (t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f) {
-        result.hit = 1;
-        result.point.x = origin.x + (int)(t * ray_vec.x);
-        result.point.y = origin.y + (int)(t * ray_vec.y);
-        result.distance = t * sqrtf(ray_vec.x * ray_vec.x + ray_vec.y * ray_vec.y);
-    }
-
-    return result;
-}
-
 void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
     for (int i = 0; i < sprite->size; i++) {
         int localX = i % sprite->width;
@@ -129,7 +90,6 @@ void tickHit(World* world) {
 int Work() {
 
     const Uint32 frameDelay = 1000 / FRAME_RATE;
-    int running = 1;
     Uint32 frameCount = 0;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -168,92 +128,20 @@ int Work() {
     Vect plrMovementVect;
     plrMovementVect = Vector_new(0, 0);
 
-    while (running) {
+    // Call exposed game stuff
+    onWorldGen(&world);
+
+    while (1) {
         Uint64 frameStart = SDL_GetTicks();
 
         SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) {
-                running = 0;
-            } else if (event.type == SDL_EVENT_KEY_DOWN) {
 
-                switch (event.key.key) {
-                    case SDLK_UP:
-                        plrMovementVect.y = -1;
-                        break;
-                    case SDLK_DOWN:
-                        plrMovementVect.y = 1;
-                        break;
-                    case SDLK_LEFT:
-                        plrMovementVect.x = -1;
-                        break;
-                    case SDLK_RIGHT:
-                        plrMovementVect.x = 1;
-                        break;
-                    default:
-                        break;
-                }
-                world.player.body.moveDirection = plrMovementVect;
-            } else if (event.type == SDL_EVENT_KEY_UP) {
-
-                SDL_Keycode key = event.key.key;
-
-                if (key == SDLK_RIGHT && plrMovementVect.x == 1) {
-                    plrMovementVect.x = 0;
-                } else if (key == SDLK_LEFT && plrMovementVect.x == -1) {
-                    plrMovementVect.x = 0;
-                } else if (key == SDLK_UP && plrMovementVect.y == -1) {
-                    plrMovementVect.y = 0;
-                } else if (key == SDLK_DOWN && plrMovementVect.y == 1) {
-                    plrMovementVect.y = 0;
-                }
-                world.player.body.moveDirection = plrMovementVect;
-            }
-        }
-
-        int curVel = sqrt(pow(world.player.body.velocity.x, 2) + pow(world.player.body.velocity.y, 2));
-        if (curVel <= world.player.body.maxSpeed) {
-            Vector_add(&(world.player.body.velocity), &(world.player.body.acceleration));
-        }
-
-        // Apply friction/deceleration if no input
-        if (world.player.body.acceleration.x == 0) {
-            world.player.body.velocity.x *= 0.75;
-        }
-        if (world.player.body.acceleration.y == 0) {
-            world.player.body.velocity.y *= 0.75;
-        }
-
-        // Add input direction to acceleration
-        world.player.body.acceleration = world.player.body.moveDirection;
-
-        world.player.body.position.x += world.player.body.velocity.x;
-        for (int i = 0; i < world.walls.size; i++) {
-            Edge collider = world.walls.data[i];
-            // Create a bounding check or raycast from slightly behind the player
-            Vect rayVec = { .x = world.player.body.velocity.x, .y = 0 };
-            RaycastHit ray = raycast(world.player.body.position, rayVec, collider);
-            if (ray.hit && ray.distance <= 16.0f) { // 4.0f acts as a small player-radius buffer
-                world.player.body.position.x -= world.player.body.velocity.x;
-                world.player.body.velocity.x = 0;
-            }
-        }
-
-        world.player.body.position.y += world.player.body.velocity.y;
-        for (int i = 0; i < world.walls.size; i++) {
-            Edge collider = world.walls.data[i];
-            Vect rayVec = { .x = 0, .y = world.player.body.velocity.y };
-            RaycastHit ray = raycast(world.player.body.position, rayVec, collider);
-            if (ray.hit && ray.distance <= 16.0f) {
-                world.player.body.position.y -= world.player.body.velocity.y;
-                world.player.body.velocity.y = 0;
-            }
-        }
-
+        // Call exposed game stuff
+        onEvent(&event, &world, &plrMovementVect);
+        onRender(&world);
+        
         // draw player
         drawSprite(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, &world.player.sprite);
-        // draw edge
-        ModifyPixels(surface, 200, 0, 1, 200, 255, 0, 0, 255);
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);

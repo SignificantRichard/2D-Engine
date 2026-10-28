@@ -12,8 +12,11 @@
 #include "../engine/files.h"
 #include "../engine/sound.h"
 
+#include <SDL3/SDL.h>
+
 void onTick();
-void onRender();
-void onWorldGen();
+void onRender(World* world);
+void onEvent(SDL_Event* event, World* world, Vect* plrMovementVect);
+void onWorldGen(World* world);
 
 #endif

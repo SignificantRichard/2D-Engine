@@ -12,6 +12,7 @@ set(SOURCE_FILES
     ./source/engine/image.c 
     ./source/engine/memory.c
     ./source/engine/sound.c
+    ./source/engine/raycast.c
 
     ./source/game/game_main.c
     
