@@ -3,18 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <SDL3/SDL.h>
-#include "files.h"
-
-typedef struct {
-    char* filePath;
-    Uint8* buffer;
-    Uint32 length;
-    SDL_AudioSpec spec;
-    uint8_t volume;
-} Sound;
-
-static SDL_AudioDeviceID audio_device = 0;
-static SDL_AudioSpec audio_spec;
+#include "sound.h"
 
 int initAudio(void) {
     audio_spec.format = SDL_AUDIO_F32;
@@ -86,21 +75,4 @@ void destroySound(Sound* sound) {
             sound->filePath = NULL;
         }
     }
-}
-
-
-int main() {
-    if (!SDL_Init(SDL_INIT_AUDIO)) {
-        SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
-        return 1;
-    }
-    initAudio();
-    Sound sound = loadSound("./source/res/raw_sounds/test.wav");
-    if (sound.buffer) {
-        playSound(&sound);
-        
-        SDL_Delay(3000); 
-    }
-    playSound(&sound);
-    return 0;
 }

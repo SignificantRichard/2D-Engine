@@ -4,9 +4,12 @@ project(Engine LANGUAGES C)
 find_package(SDL3 REQUIRED)
 
 set(SOURCE_FILES 
+    ./source/vector.c
+    ./source/body.c
     ./source/files.c 
     ./source/image.c 
-    ./source/memory.c 
+    ./source/memory.c
+    ./source/sound.c
     ./source/main.c
 )
 
