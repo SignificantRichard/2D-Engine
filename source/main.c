@@ -15,30 +15,6 @@
 #include "files.h"
 
 typedef struct {
-    Sprite sprite;
-    Vect position;
-} StaticBody;
-
-typedef struct {
-    Sprite sprite; // what is drawn
-    Body body; // movement
-    int alpha; // 255, set to 0 to hide
-} RenderedBody;
-
-RenderedBody createRenderedBody() {
-    Body body;
-    RenderedBody render;
-
-    body = Body_new();
-    render.body = body;
-    
-    Sprite sprite = loadImageAsSprite("./source/res/images/aksenapati_snow_mountain");
-    render.sprite = sprite;
-
-    return render;
-}
-
-typedef struct {
     Vect offset;
     Body* target;
 } Camera;

@@ -1,6 +1,7 @@
 #include "body.h"
 #include "vector.h"
 #include "obama.h"
+#include "image.h"
 
 // abstract body manipulation
 Body createBody() {
@@ -31,4 +32,17 @@ void setBodyAccel(Body* body, int x, int y) {
 void setBodyPos(Body* body, int x, int y) {
     body->velocity.x = x;
     body->velocity.y = y;
+}
+
+RenderedBody createRenderedBody() {
+    Body body;
+    RenderedBody render;
+
+    body = Body_new();
+    render.body = body;
+    
+    Sprite sprite = loadImageAsSprite("./source/res/images/aksenapati_snow_mountain");
+    render.sprite = sprite;
+
+    return render;
 }

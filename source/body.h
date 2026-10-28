@@ -24,4 +24,17 @@ void setBodyPosition(Body* body, int x, int y);
 void setBodyAccel(Body* body, int x, int y);
 void setBodyPos(Body* body, int x, int y);
 
+typedef struct {
+    Sprite sprite;
+    Vect position;
+} StaticBody;
+
+typedef struct {
+    Sprite sprite; // what is drawn
+    Body body; // movement
+    int alpha; // 255, set to 0 to hide
+} RenderedBody;
+
+RenderedBody createRenderedBody();
+
 #endif
