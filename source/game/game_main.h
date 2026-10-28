@@ -17,7 +17,7 @@
 
 void onTick();
 void onRender(World* world);
-int onEvent(SDL_Event* event, World* world, Vect* plrMovementVect);
+int onEvent(SDL_Event* event, World* world);
 void onWorldGen(World* world);
 RenderQueue* passRenderQueue();
 

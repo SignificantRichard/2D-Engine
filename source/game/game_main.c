@@ -27,7 +27,7 @@ void onTick() {
 
 }
 
-void onRender(World* world) {
+void playerMove(World* world) {
     int curVel = sqrt(pow(world->player.body.velocity.x, 2) + pow(world->player.body.velocity.y, 2));
     if (curVel <= world->player.body.maxSpeed) {
         Vector_add(&(world->player.body.velocity), &(world->player.body.acceleration));
@@ -68,43 +68,66 @@ void onRender(World* world) {
     }
 }
 
-int onEvent(SDL_Event* event, World* world, Vect* plrMovementVect) {
+void onRender(World* world) {
+    playerMove(world);
+
+    // blast a few rays to see walls
+    int rs = 30;
+    RaycastHit casts[rs];
+    
+    for (int i = 0; i < rs; i++) {
+        Vect proj = Vector_new(0, 0);
+        proj.x += 300;
+        proj.y += (i - rs / 2) * 10;
+        for (int j = 0; j < world->walls.size; j++) {
+            RaycastHit ray = raycast(world->player.body.position, proj, world->walls.data[j]);
+            if (ray.hit) {
+                casts[i] = ray;
+                break;
+            }
+        }
+        printf("%d %d\n", casts[i].hit, i);
+    }
+}
+
+int onEvent(SDL_Event* event, World* world) {
+    Vect plrMovementVect = world->player.body.moveDirection;
+    
     while (SDL_PollEvent(event)) {
         if (event->type == SDL_EVENT_QUIT) {
             return 1;
         } else if (event->type == SDL_EVENT_KEY_DOWN) {
-
             switch (event->key.key) {
                 case SDLK_UP:
-                    plrMovementVect->y = -1;
+                    plrMovementVect.y = -1;
                     break;
                 case SDLK_DOWN:
-                    plrMovementVect->y = 1;
+                    plrMovementVect.y = 1;
                     break;
                 case SDLK_LEFT:
-                    plrMovementVect->x = -1;
+                    plrMovementVect.x = -1;
                     break;
                 case SDLK_RIGHT:
-                    plrMovementVect->x = 1;
+                    plrMovementVect.x = 1;
                     break;
                 default:
                     break;
             }
-            world->player.body.moveDirection = *plrMovementVect;
+            world->player.body.moveDirection = plrMovementVect;
         } else if (event->type == SDL_EVENT_KEY_UP) {
 
             SDL_Keycode key = event->key.key;
 
-            if (key == SDLK_RIGHT && plrMovementVect->x == 1) {
-                plrMovementVect->x = 0;
-            } else if (key == SDLK_LEFT && plrMovementVect->x == -1) {
-                plrMovementVect->x = 0;
-            } else if (key == SDLK_UP && plrMovementVect->y == -1) {
-                plrMovementVect->y = 0;
-            } else if (key == SDLK_DOWN && plrMovementVect->y == 1) {
-                plrMovementVect->y = 0;
+            if (key == SDLK_RIGHT && plrMovementVect.x == 1) {
+                plrMovementVect.x = 0;
+            } else if (key == SDLK_LEFT && plrMovementVect.x == -1) {
+                plrMovementVect.x = 0;
+            } else if (key == SDLK_UP && plrMovementVect.y == -1) {
+                plrMovementVect.y = 0;
+            } else if (key == SDLK_DOWN && plrMovementVect.y == 1) {
+                plrMovementVect.y = 0;
             }
-            world->player.body.moveDirection = *plrMovementVect;
+            world->player.body.moveDirection = plrMovementVect;
         }
     }
     return 0;
@@ -124,13 +147,16 @@ void onWorldGen(World* world) {
     EdgeArray colliders;
     colliders = createEdgeArray(0);
 
-    // test walls
-    Edge edge;
-    Vect v = Vector_new(200, 0);
-    edge.a = v;
-    Vect v1 = Vector_new(200, 200);
-    edge.b = v1;
-    edgeArrayPushBack(&colliders, edge);
-    
+    // Test walls
+    Edge edge1 = { .a = Vector_new(0, 0),     .b = Vector_new(200, 0) };    // Top wall
+    Edge edge2 = { .a = Vector_new(200, 0),   .b = Vector_new(200, 200) };  // Right wall
+    Edge edge3 = { .a = Vector_new(200, 200), .b = Vector_new(0, 200) };    // Bottom wall
+    Edge edge4 = { .a = Vector_new(0, 200),   .b = Vector_new(0, 0) };      // Left wall
+
+    edgeArrayPushBack(&colliders, edge1);
+    edgeArrayPushBack(&colliders, edge2);
+    edgeArrayPushBack(&colliders, edge3);
+    edgeArrayPushBack(&colliders, edge4);
+
     world->walls = colliders;
 }

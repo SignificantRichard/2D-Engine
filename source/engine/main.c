@@ -144,8 +144,6 @@ int Work() {
 
     World world;
     world = initEngine();
-    Vect plrMovementVect;
-    plrMovementVect = Vector_new(0, 0);
 
     // Call exposed game stuff
     onWorldGen(&world);
@@ -156,7 +154,7 @@ int Work() {
         SDL_Event event;
 
         // Call exposed game stuff
-        if (onEvent(&event, &world, &plrMovementVect))
+        if (onEvent(&event, &world))
             break;
         onRender(&world);
         

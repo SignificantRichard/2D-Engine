@@ -12,4 +12,7 @@
 #define INTERNAL_WIDTH 640
 #define INTERNAL_HEIGHT 480
 
+#define PI 3.14159265359
+#define TPI 6.28318530718
+
 #endif
