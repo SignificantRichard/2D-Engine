@@ -1,3 +1,5 @@
+# Script is bad. Will replace later.
+
 import os
 from PIL import Image
 

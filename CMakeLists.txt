@@ -13,6 +13,7 @@ set(SOURCE_FILES
     ./source/engine/memory.c
     ./source/engine/sound.c
     ./source/engine/raycast.c
+    ./source/engine/renderqueue.c
 
     ./source/game/game_main.c
     

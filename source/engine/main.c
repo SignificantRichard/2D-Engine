@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 #include <unistd.h>
 #include <math.h>
+#include "renderqueue.h"
 #include "../game/game_main.h"
 
 World initEngine() {
@@ -137,11 +138,16 @@ int Work() {
         SDL_Event event;
 
         // Call exposed game stuff
-        onEvent(&event, &world, &plrMovementVect);
+        if (onEvent(&event, &world, &plrMovementVect))
+            break;
         onRender(&world);
         
-        // draw player
-        drawSprite(surface, world.player.body.position.x - 2, world.player.body.position.y - 2, &world.player.sprite);
+        RenderQueue* renderQueue = passRenderQueue();
+
+        for (int i = 0; i < renderQueue->size; i++) {
+            RenderedBody* body = renderQueue->sprites[i];
+            drawSprite(surface, body->body.position.x, body->body.position.y, &body->sprite);
+        }
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);

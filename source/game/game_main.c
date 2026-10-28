@@ -21,6 +21,8 @@
 #include <math.h>
 #include <SDL3/SDL.h>
 
+static RenderQueue renderQueue;
+
 void onTick() {
 
 }
@@ -66,10 +68,10 @@ void onRender(World* world) {
     }
 }
 
-void onEvent(SDL_Event* event, World* world, Vect* plrMovementVect) {
+int onEvent(SDL_Event* event, World* world, Vect* plrMovementVect) {
     while (SDL_PollEvent(event)) {
         if (event->type == SDL_EVENT_QUIT) {
-            SDL_Quit();
+            return 1;
         } else if (event->type == SDL_EVENT_KEY_DOWN) {
 
             switch (event->key.key) {
@@ -105,13 +107,17 @@ void onEvent(SDL_Event* event, World* world, Vect* plrMovementVect) {
             world->player.body.moveDirection = *plrMovementVect;
         }
     }
+    return 0;
 }
 
 // What you want to render
-void renderQueue() {
-
+RenderQueue* passRenderQueue() {
+    return &renderQueue;
 }
 
 void onWorldGen(World* world) {
     printf("Hello world!\n");
+
+    renderQueue = createRenderQueue();
+    renderQueuePushBack(&renderQueue, &world->player);
 }

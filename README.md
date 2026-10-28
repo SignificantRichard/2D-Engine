@@ -13,7 +13,12 @@ Learning to write a physics engine. Figuring out systems before I move onto 3D
 - Acceleration based movement
 - Collisions
 - Sprite rendering
+- Sound
 
 ---
 
 This project is in its infancy. I don't know if it will go past said infancy.
+
+---
+
+Since I don't include image or sound files, files using test assets will break.

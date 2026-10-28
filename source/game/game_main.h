@@ -11,12 +11,14 @@
 #include "../engine/face.h"
 #include "../engine/files.h"
 #include "../engine/sound.h"
+#include "../engine/renderqueue.h"
 
 #include <SDL3/SDL.h>
 
 void onTick();
 void onRender(World* world);
-void onEvent(SDL_Event* event, World* world, Vect* plrMovementVect);
+int onEvent(SDL_Event* event, World* world, Vect* plrMovementVect);
 void onWorldGen(World* world);
+RenderQueue* passRenderQueue();
 
 #endif
