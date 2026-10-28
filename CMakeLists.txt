@@ -4,15 +4,18 @@ project(Engine LANGUAGES C)
 find_package(SDL3 REQUIRED)
 
 set(SOURCE_FILES 
-    ./source/vector.c
-    ./source/body.c
-    ./source/edge.c
-    ./source/face.c
-    ./source/files.c 
-    ./source/image.c 
-    ./source/memory.c
-    ./source/sound.c
-    ./source/main.c
+    ./source/engine/vector.c
+    ./source/engine/body.c
+    ./source/engine/edge.c
+    ./source/engine/face.c
+    ./source/engine/files.c 
+    ./source/engine/image.c 
+    ./source/engine/memory.c
+    ./source/engine/sound.c
+
+    ./source/game/game_main.c
+    
+    ./source/engine/main.c
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})

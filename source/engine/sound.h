@@ -1,12 +1,11 @@
 #ifndef SOUND_H
 #define SOUND_H
 
+#include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <SDL3/SDL.h>
-#include "sound.h"
 
 typedef struct {
     char* filePath;
@@ -16,8 +15,8 @@ typedef struct {
     uint8_t volume;
 } Sound;
 
-static SDL_AudioDeviceID audio_device = 0;
-static SDL_AudioSpec audio_spec;
+extern SDL_AudioDeviceID audio_device;
+extern SDL_AudioSpec audio_spec;
 
 int initAudio(void);
 int destroyAudio(void);

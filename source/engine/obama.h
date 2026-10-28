@@ -2,10 +2,7 @@
 #define OBAMA_H
 
 // Let me be clear -Barack Barack
-#define true 1
-#define false 0
 #define print printf
-#define bool int
 
 // envars
 #define DEFAULT_MAX_SPEED 16

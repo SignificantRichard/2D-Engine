@@ -2,6 +2,7 @@
 #define BODY_H
 
 #include "vector.h"
+#include "image.h"
 
 #define Body_new createBody
 #define body_speedLim setSpeedLimit

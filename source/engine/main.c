@@ -4,27 +4,7 @@
 #include <SDL3/SDL_main.h>
 #include <unistd.h>
 #include <math.h>
-#include "image.h"
-#include "memory.h"
-#include "obama.h"
-#include "sound.h"
-#include "vector.h"
-#include "body.h" 
-#include "edge.h"
-#include "face.h"
-#include "files.h"
-
-typedef struct {
-    Vect offset;
-    Body* target;
-} Camera;
-
-typedef struct {
-    RenderedBody* bodies; // all moving elements
-    RenderedBody player; // player
-    Camera camera; // camera
-    EdgeArray walls; // static collision bounds
-} World;
+#include "../game/game_main.h"
 
 World initEngine() {
     World world;
@@ -52,7 +32,7 @@ World initEngine() {
     return world;
 }
 
-bool ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, int a) {
+int ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, int a) {
     if (x < 0 || y < 0 || x > INTERNAL_WIDTH || y > INTERNAL_HEIGHT) {
         return 1;
     }
@@ -96,13 +76,13 @@ void ModifyPixels(SDL_Surface* surface, int x, int y, int w, int h, int r, int g
 
 // Struct to store intersection results
 typedef struct {
-    bool hit;
+    int hit;
     Vect point;     // Exact (x, y) coordinates of the hit
     float distance; // Distance from origin to the hit point
 } RaycastHit;
 
 RaycastHit raycast(Vect origin, Vect ray_vec, Edge edge) {
-    RaycastHit result = { .hit = false, .point = {0, 0}, .distance = 0.0f };
+    RaycastHit result = { .hit = 0, .point = {0, 0}, .distance = 0.0f };
     
     Vect p1 = edge.a;
     Vect p2 = edge.b;
@@ -117,21 +97,13 @@ RaycastHit raycast(Vect origin, Vect ray_vec, Edge edge) {
     float u = (float)(qp.x * ray_vec.y - qp.y * ray_vec.x) / r_cross_s;
 
     if (t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f) {
-        result.hit = true;
+        result.hit = 1;
         result.point.x = origin.x + (int)(t * ray_vec.x);
         result.point.y = origin.y + (int)(t * ray_vec.y);
         result.distance = t * sqrtf(ray_vec.x * ray_vec.x + ray_vec.y * ray_vec.y);
     }
 
     return result;
-}
-
-int lazyApproxSqrt(int x) {
-    // Lazy for collision check
-    if (x > 2*INTERNAL_WIDTH/3) {
-        return 0b01111111111111111;
-    }
-    return -x*(x-INTERNAL_WIDTH)/INTERNAL_WIDTH/3;
 }
 
 void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
@@ -151,12 +123,13 @@ void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
 
 // Do game checks here
 void tickHit(World* world) {
+
 }
 
 int Work() {
 
     const Uint32 frameDelay = 1000 / FRAME_RATE;
-    bool running = true;
+    int running = 1;
     Uint32 frameCount = 0;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -201,7 +174,7 @@ int Work() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
-                running = false;
+                running = 0;
             } else if (event.type == SDL_EVENT_KEY_DOWN) {
 
                 switch (event.key.key) {

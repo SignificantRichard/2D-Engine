@@ -5,6 +5,9 @@
 #include <SDL3/SDL.h>
 #include "sound.h"
 
+SDL_AudioDeviceID audio_device = 0;
+SDL_AudioSpec audio_spec = {0};
+
 int initAudio(void) {
     audio_spec.format = SDL_AUDIO_F32;
     audio_spec.channels = 2;
