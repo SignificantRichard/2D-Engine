@@ -21,9 +21,9 @@ typedef struct {
 // abstract body manipulation
 Body createBody();
 void setSpeedLimit(Body* body, int maxSpeed);
-void setBodyPosition(Body* body, int x, int y);
-void setBodyAccel(Body* body, int x, int y);
-void setBodyPos(Body* body, int x, int y);
+void setBodyPosition(Body* body, float x, float y);
+void setBodyAccel(Body* body, float x, float y);
+void setBodyPos(Body* body, float x, float y);
 
 typedef struct {
     Sprite sprite;
@@ -36,6 +36,6 @@ typedef struct {
     int alpha; // 255, set to 0 to hide
 } RenderedBody;
 
-RenderedBody createRenderedBody();
+RenderedBody createRenderedBody(char* spriteFilePath);
 
 #endif

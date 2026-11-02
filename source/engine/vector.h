@@ -13,18 +13,20 @@
 
 // 2D representation of Vector
 typedef struct {
-    int x;
-    int y;
+    float x;
+    float y;
 } Vect;
 
-Vect createVector(int x, int y);
+Vect createVector(float x, float y);
 void addVectors(Vect* original, Vect* additor);
 void subVectors(Vect* original, Vect* subtractor);
 void multVectors(Vect* original, Vect* multiplier);
 void diviVectors(Vect* original, Vect* dividor);
+float magniVectors(Vect* v1, Vect* v2);
+float magniVector(Vect* v);
 
 typedef struct {
-    Vect* data;      // Pointer to contiguous heap buffer
+    Vect* data;      // Pofloater to contiguous heap buffer
     int size;     // Current number of elements stored
     int capacity; // Allocated capacity in elements
 } VectArray;
@@ -32,7 +34,7 @@ typedef struct {
 Vect* createVectorArray();
 // Create and allocate a new Vect dynamic array
 VectArray createVectArray(int initialCapacity);
-// Internal helper to double capacity when full
+// floaternal helper to double capacity when full
 void expandVectArray(VectArray* arr);
 // Append an item to the end
 void vectArrayPushBack(VectArray* arr, Vect add);

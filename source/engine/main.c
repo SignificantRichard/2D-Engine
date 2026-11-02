@@ -14,6 +14,7 @@ World initEngine() {
     
     world.player = createRenderedBody("./source/res/images/aksenapati_snow_mountain");
     world.player.body.velocity = Vector_new(0, 0); // for some reason the player's velocity is not init
+    world.player.body.position = Vector_new(20, 20);
 
     Camera camera;
     camera.target = &world.player.body;

@@ -28,66 +28,101 @@ void onTick() {
 }
 
 void playerMove(World* world) {
-    int curVel = sqrt(pow(world->player.body.velocity.x, 2) + pow(world->player.body.velocity.y, 2));
-    if (curVel <= world->player.body.maxSpeed) {
-        Vector_add(&(world->player.body.velocity), &(world->player.body.acceleration));
+    RenderedBody* plr = &world->player;
+    Body* body = &plr->body;
+    
+    if (body->moveDirection.x == 0.0f) {
+        body->velocity.x *= 0.8f;
+    }
+    if (body->moveDirection.y == 0.0f) {
+        body->velocity.y *= 0.8f;
     }
 
-    // Apply friction/deceleration if no input
-    if (world->player.body.acceleration.x == 0) {
-        world->player.body.velocity.x *= 0.75;
+    body->acceleration = body->moveDirection;
+    
+    body->velocity.x += body->acceleration.x;
+    body->velocity.y += body->acceleration.y;
+    
+    float maxSpeedF = (float)body->maxSpeed;
+    float speedSq = body->velocity.x * body->velocity.x + body->velocity.y * body->velocity.y;
+    if (speedSq > maxSpeedF * maxSpeedF) {
+        float speed = sqrtf(speedSq);
+        body->velocity.x = (body->velocity.x / speed) * maxSpeedF;
+        body->velocity.y = (body->velocity.y / speed) * maxSpeedF;
     }
-    if (world->player.body.acceleration.y == 0) {
-        world->player.body.velocity.y *= 0.75;
+    
+    Vect displacement = body->velocity;
+    if (displacement.x == 0.0f && displacement.y == 0.0f) {
+        return;
     }
 
-    // Add input direction to acceleration
-    world->player.body.acceleration = world->player.body.moveDirection;
+    Vect currentPos = body->position;
+    int hitOccurred = 0;
 
-    world->player.body.position.x += world->player.body.velocity.x;
-    for (int i = 0; i < world->walls.size; i++) {
-        Edge collider = world->walls.data[i];
-        // Create a bounding check or raycast from slightly behind the player
-        Vect rayVec = { .x = world->player.body.velocity.x, .y = 0 };
-        RaycastHit ray = raycast(world->player.body.position, rayVec, collider);
-        if (ray.hit && ray.distance <= 16.0f) { // 4.0f acts as a small player-radius buffer
-            world->player.body.position.x -= world->player.body.velocity.x;
-            world->player.body.velocity.x = 0;
+    for (int iteration = 0; iteration < 2; iteration++) {
+        float totalDispLen = sqrtf(displacement.x * displacement.x + displacement.y * displacement.y);
+        if (totalDispLen == 0.0f) break;
+
+        float closestDistNorm = 1.0f;
+        Edge hitEdge = {0};
+
+        for (int i = 0; i < world->walls.size; i++) {
+            Edge wall = world->walls.data[i];
+            RaycastHit hit = raycast(currentPos, displacement, wall); // Uses raycast[cite: 3]
+            
+            if (hit.hit) {
+                float distNorm = hit.distance / totalDispLen;
+                if (distNorm >= 0.0f && distNorm <= 1.0f && distNorm < closestDistNorm) {
+                    closestDistNorm = distNorm;
+                    hitOccurred = 1;
+                    hitEdge = wall;
+                }
+            }
+        }
+
+        if (hitOccurred) {
+            float safeFraction = (closestDistNorm > 0.01f) ? (closestDistNorm - 0.01f) : 0.0f;
+            Vect safePoint = createVector(
+                currentPos.x + displacement.x * safeFraction,
+                currentPos.y + displacement.y * safeFraction
+            );
+            
+            float remainingFraction = 1.0f - closestDistNorm;
+            Vect remainingMove = createVector(
+                displacement.x * remainingFraction, 
+                displacement.y * remainingFraction
+            );
+
+            Vect edgeVec = createVector(hitEdge.b.x - hitEdge.a.x, hitEdge.b.y - hitEdge.a.y);
+            float edgeLen = sqrtf(edgeVec.x * edgeVec.x + edgeVec.y * edgeVec.y);
+            
+            if (edgeLen > 0.0f) {
+                Vect edgeDir = createVector(edgeVec.x / edgeLen, edgeVec.y / edgeLen);
+                
+                float dot = remainingMove.x * edgeDir.x + remainingMove.y * edgeDir.y;
+                displacement = createVector(edgeDir.x * dot, edgeDir.y * dot);
+                currentPos = safePoint;
+            } else {
+                currentPos = safePoint;
+                displacement = createVector(0.0f, 0.0f);
+                break;
+            }
+        } else {
+            currentPos.x += displacement.x;
+            currentPos.y += displacement.y;
+            break;
         }
     }
 
-    world->player.body.position.y += world->player.body.velocity.y;
-    for (int i = 0; i < world->walls.size; i++) {
-        Edge collider = world->walls.data[i];
-        Vect rayVec = { .x = 0, .y = world->player.body.velocity.y };
-        RaycastHit ray = raycast(world->player.body.position, rayVec, collider);
-        if (ray.hit && ray.distance <= 16.0f) {
-            world->player.body.position.y -= world->player.body.velocity.y;
-            world->player.body.velocity.y = 0;
-        }
+    body->position = currentPos;
+    
+    if (hitOccurred) {
+        body->velocity = displacement;
     }
 }
 
 void onRender(World* world) {
     playerMove(world);
-
-    // blast a few rays to see walls
-    int rs = 30;
-    RaycastHit casts[rs];
-    
-    for (int i = 0; i < rs; i++) {
-        Vect proj = Vector_new(0, 0);
-        proj.x += 300;
-        proj.y += (i - rs / 2) * 10;
-        for (int j = 0; j < world->walls.size; j++) {
-            RaycastHit ray = raycast(world->player.body.position, proj, world->walls.data[j]);
-            if (ray.hit) {
-                casts[i] = ray;
-                break;
-            }
-        }
-        printf("%d %d\n", casts[i].hit, i);
-    }
 }
 
 int onEvent(SDL_Event* event, World* world) {
@@ -99,33 +134,32 @@ int onEvent(SDL_Event* event, World* world) {
         } else if (event->type == SDL_EVENT_KEY_DOWN) {
             switch (event->key.key) {
                 case SDLK_UP:
-                    plrMovementVect.y = -1;
+                    plrMovementVect.y = -1.0f;
                     break;
                 case SDLK_DOWN:
-                    plrMovementVect.y = 1;
+                    plrMovementVect.y = 1.0f;
                     break;
                 case SDLK_LEFT:
-                    plrMovementVect.x = -1;
+                    plrMovementVect.x = -1.0f;
                     break;
                 case SDLK_RIGHT:
-                    plrMovementVect.x = 1;
+                    plrMovementVect.x = 1.0f;
                     break;
                 default:
                     break;
             }
             world->player.body.moveDirection = plrMovementVect;
         } else if (event->type == SDL_EVENT_KEY_UP) {
-
             SDL_Keycode key = event->key.key;
 
-            if (key == SDLK_RIGHT && plrMovementVect.x == 1) {
-                plrMovementVect.x = 0;
-            } else if (key == SDLK_LEFT && plrMovementVect.x == -1) {
-                plrMovementVect.x = 0;
-            } else if (key == SDLK_UP && plrMovementVect.y == -1) {
-                plrMovementVect.y = 0;
-            } else if (key == SDLK_DOWN && plrMovementVect.y == 1) {
-                plrMovementVect.y = 0;
+            if (key == SDLK_RIGHT && plrMovementVect.x >= 1.0f) {
+                plrMovementVect.x = 0.0f;
+            } else if (key == SDLK_LEFT && plrMovementVect.x <= -1.0f) {
+                plrMovementVect.x = 0.0f;
+            } else if (key == SDLK_UP && plrMovementVect.y <= -1.0f) {
+                plrMovementVect.y = 0.0f;
+            } else if (key == SDLK_DOWN && plrMovementVect.y >= 1.0f) {
+                plrMovementVect.y = 0.0f;
             }
             world->player.body.moveDirection = plrMovementVect;
         }

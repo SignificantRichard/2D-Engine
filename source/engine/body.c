@@ -7,9 +7,9 @@
 Body createBody() {
     Body body;
     
-    body.position = Vector_new(0, 0);
-    body.acceleration = Vector_new(0, 0);
-    body.moveDirection = Vector_new(0, 0);
+    body.position = Vector_new(0.0f, 0.0f);
+    body.acceleration = Vector_new(0.0f, 0.0f);
+    body.moveDirection = Vector_new(0.0f, 0.0f);
     body.maxSpeed = DEFAULT_MAX_SPEED;
 
     return body;
@@ -19,17 +19,17 @@ void setSpeedLimit(Body* body, int maxSpeed) {
     body->maxSpeed = maxSpeed;
 }
 
-void setBodyPosition(Body* body, int x, int y) {
+void setBodyPosition(Body* body, float x, float y) {
     body->position.x = x;
     body->position.y = y;
 }
 
-void setBodyAccel(Body* body, int x, int y) {
+void setBodyAccel(Body* body, float x, float y) {
     body->acceleration.x = x;
     body->acceleration.y = y;
 }
 
-void setBodyPos(Body* body, int x, int y) {
+void setBodyPos(Body* body, float x, float y) {
     body->velocity.x = x;
     body->velocity.y = y;
 }

@@ -4,7 +4,7 @@
 #include <math.h>
 
 RaycastHit raycast(Vect origin, Vect ray_vec, Edge edge) {
-    RaycastHit result = { .hit = 0, .point = {0, 0}, .distance = 0.0f };
+    RaycastHit result = { .hit = 0, .point = createVector(0.0f, 0.0f), .distance = 0.0f };
     
     Vect p1 = edge.a;
     Vect p2 = edge.b;
@@ -21,8 +21,8 @@ RaycastHit raycast(Vect origin, Vect ray_vec, Edge edge) {
 
     if (t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f) {
         result.hit = 1;
-        result.point.x = origin.x + (int)(t * ray_vec.x);
-        result.point.y = origin.y + (int)(t * ray_vec.y);
+        result.point.x = origin.x + (t * ray_vec.x);
+        result.point.y = origin.y + (t * ray_vec.y);
         result.distance = t * sqrtf(ray_vec.x * ray_vec.x + ray_vec.y * ray_vec.y);
     }
 

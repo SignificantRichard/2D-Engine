@@ -1,8 +1,9 @@
 #include "vector.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
-Vect createVector(int x, int y) {
+Vect createVector(float x, float y) {
     Vect vec;
     vec.x = x;
     vec.y = y;
@@ -27,6 +28,14 @@ void multVectors(Vect* original, Vect* multiplier) {
 void diviVectors(Vect* original, Vect* dividor) {
     original->x /= dividor->x;
     original->y /= dividor->y;
+}
+
+float magniVectors(Vect* v1, Vect* v2) {
+    return sqrtf(pow(v1->x - v2->x, 2) + pow(v1->y - v2->y, 2));
+}
+
+float magniVector(Vect* v) {
+    return sqrtf(pow(v->x, 2) + pow(v->y, 2));
 }
 
 Vect* createVectorArray() {
