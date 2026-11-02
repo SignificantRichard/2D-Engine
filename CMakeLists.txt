@@ -15,6 +15,8 @@ set(SOURCE_FILES
     ./source/engine/raycast.c
     ./source/engine/renderqueue.c
 
+    ./source/game/collision.c
+
     ./source/game/game_main.c
     
     ./source/engine/main.c
