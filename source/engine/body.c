@@ -34,14 +34,14 @@ void setBodyPos(Body* body, int x, int y) {
     body->velocity.y = y;
 }
 
-RenderedBody createRenderedBody() {
+RenderedBody createRenderedBody(char* spriteFilePath) {
     Body body;
     RenderedBody render;
 
     body = Body_new();
     render.body = body;
     
-    Sprite sprite = loadImageAsSprite("./source/res/images/aksenapati_snow_mountain");
+    Sprite sprite = loadImageAsSprite(spriteFilePath);
     render.sprite = sprite;
 
     return render;

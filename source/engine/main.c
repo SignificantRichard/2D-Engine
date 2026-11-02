@@ -12,7 +12,7 @@ World initEngine() {
     // calloc MAX_ELEMENTS_IN_WORLD elements because I can't be bothered
     world.bodies = (RenderedBody*)calloc(MAX_ELEMENTS_IN_WORLD, sizeof(RenderedBody));
     
-    world.player = createRenderedBody();
+    world.player = createRenderedBody("./source/res/images/aksenapati_snow_mountain");
     world.player.body.velocity = Vector_new(0, 0); // for some reason the player's velocity is not init
 
     Camera camera;
