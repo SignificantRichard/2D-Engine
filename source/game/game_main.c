@@ -24,7 +24,7 @@
 
 static RenderQueue renderQueue;
 
-void onTick() {
+void onTick(World* world) {
 
 }
 

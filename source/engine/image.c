@@ -96,3 +96,20 @@ Sprite loadImageAsSprite(char* path) {
 
     return sprite;
 }
+
+Sprite resample(Sprite original, int w, int h, int method) {
+    Sprite new = constructSprite(w, h);
+    switch (method) {
+        default:
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int originalX = (x * h + y) % (original.width * original.height);
+                    uint32_t color = getPixel(&original, originalX / original.height, originalX % original.height);
+                    setPixel(&new, x, y, color);
+                }
+            }
+            break;
+    }
+
+    return new;
+}
