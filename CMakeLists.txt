@@ -16,6 +16,7 @@ set(SOURCE_FILES
     ./source/engine/renderqueue.c
     ./source/engine/collision.c
 
+    ./source/game/wall.c
     
     ./source/game/game_main.c
     

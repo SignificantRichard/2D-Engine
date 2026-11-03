@@ -13,9 +13,11 @@
 #include "../engine/sound.h"
 #include "../engine/renderqueue.h"
 
+#include "wall.h"
+
 #include <SDL3/SDL.h>
 
-void onTick();
+void onTick(World* world);
 void onRender(World* world);
 int onEvent(SDL_Event* event, World* world);
 void onWorldGen(World* world);

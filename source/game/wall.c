@@ -1,26 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-
-typedef struct {
-    char* texture; // file name
-    int height; // how tall is the wall
-    int voffset;
-    int lowCutoff; // the low point of a window
-    int highCutoff; // the high point of a window
-    Edge* parent;
-} Wall;
+#include "wall.h"
 
 /**
  * @brief Create a Wall object that has no point or texture data
  * 
  * @return Wall 
  */
-Wall createWall(Edge* parent) {
+Wall createWall() {
     Wall wall;
     wall.texture = "default";
-    wall.parent = parent;
-
+    
     return wall;
 }
 

@@ -35,9 +35,9 @@ static RenderQueue renderQueue;
 static float rotationDirection = 0.0f; // player rotation
 static float walkDirection = 0.0f;
 static float rotation = 0.0f;
-static RenderedBody wallSprites[RAY_AMOUNT];
+static RenderedBody* wallSprites;
 
-void onTick() {
+void onTick(World* world) {
 
 }
 
@@ -64,6 +64,7 @@ void playerMove(World* world) {
 void sight(World* world) {
     int range = 250;
     RaycastHit rays[RAY_AMOUNT];
+    float fov = FOV;
 
     float step = FOV / RAY_AMOUNT * 2;
 
@@ -74,10 +75,12 @@ void sight(World* world) {
         for (int j = 0; j < world->walls.size; j++) {
             Edge wall = world->walls.data[j];
             RaycastHit ray = raycast(world->player.body.position, facing, wall);
+            if (ray.hit) {
+
+            }
         }
         fov -= step;
     }
-
     
 }
 
@@ -118,9 +121,9 @@ int onEvent(SDL_Event* event, World* world) {
                 rotationDirection = 0.0f;
             } else if (key == SDLK_LEFT && rotationDirection <= -rotationSpeed) {
                 rotationDirection = 0.0f;
-            } else if (key == SDLK_UP && plrMovementVect.y <= -1.0f) {
+            } else if (key == SDLK_UP && walkDirection <= -1.0f) {
                 walkDirection = 0.0f;
-            } else if (key == SDLK_DOWN && plrMovementVect.y >= 1.0f) {
+            } else if (key == SDLK_DOWN && walkDirection >= 1.0f) {
                 walkDirection = 0.0f;
             }
         }
@@ -141,29 +144,27 @@ void onWorldGen(World* world) {
 
     EdgeArray colliders;
     colliders = createEdgeArray(0);
-
     
     // Test walls
-    Edge edge1 = { .a = Vector_new(0, 0),     .b = Vector_new(200, 0) };    // Top wall
-    Wall wall1 = createWall(&edge1);
-    edge1.wall = wall1;
-    Edge edge2 = { .a = Vector_new(200, 0),   .b = Vector_new(200, 200) };  // Right wall
-    Wall wall2 = createWall(&edge2);
-    edge2.wall = wall2;
-    Edge edge3 = { .a = Vector_new(200, 200), .b = Vector_new(0, 200) };    // Bottom wall
-    Wall wall3 = createWall(&edge3);
-    edge3.wall = wall3;
-    Edge edge4 = { .a = Vector_new(0, 200),   .b = Vector_new(0, 0) };      // Left wall
-    Wall wall4 = createWall(&edge1);
-    edge4.wall = wall4;
+    Wall wall1 = createWall();
+    Wall wall2 = createWall();
+    Wall wall3 = createWall();
+    Wall wall4 = createWall();
+    Edge edge1 = { .a = Vector_new(0, 0), .b = Vector_new(200, 0), .wall=wall1}; // Top wall
+    Edge edge2 = { .a = Vector_new(200, 0), .b = Vector_new(200, 200), .wall=wall2}; // Right wall
+    Edge edge3 = { .a = Vector_new(200, 200), .b = Vector_new(0, 200), .wall=wall3}; // Bottom wall
+    Edge edge4 = { .a = Vector_new(0, 200), .b = Vector_new(0, 0), .wall=wall4}; // Left wall
 
     edgeArrayPushBack(&colliders, edge1);
     edgeArrayPushBack(&colliders, edge2);
     edgeArrayPushBack(&colliders, edge3);
     edgeArrayPushBack(&colliders, edge4);
 
+    wallSprites = malloc(RAY_AMOUNT * sizeof(RenderedBody));
     for (int i = 0; i < RAY_AMOUNT; i++) {
-        wallSprites[i] = createRenderedBody("./res/images/default");
+        wallSprites[i] = createRenderedBody("./source/res/images/default");
+        wallSprites[i].body.position.x = i * 16;
+        renderQueuePushBack(&renderQueue, &wallSprites[i]);
     }
 
     world->walls = colliders;
