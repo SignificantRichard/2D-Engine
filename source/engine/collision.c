@@ -1,9 +1,9 @@
 #include "collision.h"
-#include "../engine/vector.h"
-#include "../engine/edge.h"
-#include "../engine/body.h"
-#include "../engine/raycast.h"
-#include "../engine/world.h"
+#include "vector.h"
+#include "edge.h"
+#include "body.h"
+#include "raycast.h"
+#include "world.h"
 #include <math.h>
 
 void moveAndSlide(RenderedBody* renderedBody, World* world) {

@@ -1,8 +1,8 @@
 #ifndef COLLISION_H
 #define COLLISION_H
 
-#include "../engine/world.h"
-#include "../engine/body.h"
+#include "world.h"
+#include "body.h"
 
 void moveAndSlide(RenderedBody* renderedBody, World* world);
 
