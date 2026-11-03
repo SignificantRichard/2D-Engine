@@ -3,3 +3,10 @@
 /source/res/raw_images/*
 /source/res/raw_sounds/*
 /source/res/sounds/*
+
+!/build
+!/source/res/images
+!/source/res/raw_images
+!/source/res/sounds
+
+!/source/res/images/default
