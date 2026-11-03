@@ -10,9 +10,7 @@
 #include "../engine/files.h"
 #include "../engine/sound.h"
 #include "../engine/raycast.h"
-
-// Stuff not packaged in engine
-#include "collision.h"
+#include "../engine/collision.h"
 
 // Self
 #include "game_main.h"

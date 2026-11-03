@@ -14,9 +14,9 @@ set(SOURCE_FILES
     ./source/engine/sound.c
     ./source/engine/raycast.c
     ./source/engine/renderqueue.c
+    ./source/engine/collision.c
 
-    ./source/game/collision.c
-
+    
     ./source/game/game_main.c
     
     ./source/engine/main.c
