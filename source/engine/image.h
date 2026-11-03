@@ -13,6 +13,10 @@ typedef struct {
     int size;
 } Sprite;
 
+enum INTERPOLATION_METHOD {
+    NEAREST_NEIGHBOR
+};
+
 Sprite constructSprite(int width, int height);
 uint32_t getPixel(Sprite* sprite, int x, int y);
 void setPixel(Sprite* sprite, int x, int y, uint32_t color);

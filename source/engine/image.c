@@ -100,7 +100,7 @@ Sprite loadImageAsSprite(char* path) {
 Sprite resample(Sprite original, int w, int h, int method) {
     Sprite new = constructSprite(w, h);
     switch (method) {
-        default:
+        case NEAREST_NEIGHBOR:
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
                     int originalX = (x * h + y) % (original.width * original.height);
@@ -109,6 +109,10 @@ Sprite resample(Sprite original, int w, int h, int method) {
                 }
             }
             break;
+        default:
+            printf("Invalid resample method used");
+            break;
+        
     }
 
     return new;
