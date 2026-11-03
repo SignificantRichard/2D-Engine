@@ -45,10 +45,10 @@ void faceArrayPushBack(FaceArray* arr, Face add) {
 // Replace a Face at a given index
 void faceArrayReplace(FaceArray* arr, int pos, Face with) {
     if (pos > arr->size) {
-        printf("Position %zu is invalid (too large for array size %zu)\n", pos, arr->size);
+        printf("Position %d is invalid (too large for array size %d)\n", pos, arr->size);
         return;
     } else if (pos == arr->size) {
-        printf("Position %zu is out of bounds. Did you mean faceArrayPushBack?\n", pos);
+        printf("Position %d is out of bounds. Did you mean faceArrayPushBack?\n", pos);
         return;
     }
 
