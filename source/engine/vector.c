@@ -147,10 +147,10 @@ void vectArrayPushBack(VectArray* arr, Vect add) {
  */
 void vectArrayReplace(VectArray* arr, int pos, Vect with) {
     if (pos > arr->size) {
-        printf("Position %zu is invalid (too large for array size %zu)\n", pos, arr->size);
+        printf("Position %d is invalid (too large for array size %d)\n", pos, arr->size);
         return;
     } else if (pos == arr->size) {
-        printf("Position %zu is out of bounds. Did you mean vectArrayPushBack?\n", pos);
+        printf("Position %d is out of bounds. Did you mean vectArrayPushBack?\n", pos);
         return;
     }
 
