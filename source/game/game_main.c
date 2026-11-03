@@ -12,6 +12,9 @@
 #include "../engine/raycast.h"
 #include "../engine/collision.h"
 
+// game specific stuff
+#include "wall.h"
+
 // Self
 #include "game_main.h"
 
@@ -22,13 +25,17 @@
 #include <math.h>
 #include <SDL3/SDL.h>
 
+// envar
 #define rotationSpeed 0.1f
+#define RAY_AMOUNT 30
+#define FOV PI
 
 static RenderQueue renderQueue;
 
 static float rotationDirection = 0.0f; // player rotation
 static float walkDirection = 0.0f;
 static float rotation = 0.0f;
+static RenderedBody wallSprites[RAY_AMOUNT];
 
 void onTick() {
 
@@ -55,17 +62,15 @@ void playerMove(World* world) {
 }
 
 void sight(World* world) {
-    int amount = 30;
     int range = 250;
-    float fov = PI / 2;
-    RaycastHit rays[amount];
+    RaycastHit rays[RAY_AMOUNT];
 
-    float step = fov / amount * 2;
+    float step = FOV / RAY_AMOUNT * 2;
 
     Vect facing = Vector_new(cosf(rotation + fov) * range, sinf(rotation + fov) * range);
 
     // blast a stupid amount of rays to check for walls
-    for (int i = 0; i < amount; i++) {
+    for (int i = 0; i < RAY_AMOUNT; i++) {
         for (int j = 0; j < world->walls.size; j++) {
             Edge wall = world->walls.data[j];
             RaycastHit ray = raycast(world->player.body.position, facing, wall);
@@ -137,16 +142,29 @@ void onWorldGen(World* world) {
     EdgeArray colliders;
     colliders = createEdgeArray(0);
 
+    
     // Test walls
     Edge edge1 = { .a = Vector_new(0, 0),     .b = Vector_new(200, 0) };    // Top wall
+    Wall wall1 = createWall(&edge1);
+    edge1.wall = wall1;
     Edge edge2 = { .a = Vector_new(200, 0),   .b = Vector_new(200, 200) };  // Right wall
+    Wall wall2 = createWall(&edge2);
+    edge2.wall = wall2;
     Edge edge3 = { .a = Vector_new(200, 200), .b = Vector_new(0, 200) };    // Bottom wall
+    Wall wall3 = createWall(&edge3);
+    edge3.wall = wall3;
     Edge edge4 = { .a = Vector_new(0, 200),   .b = Vector_new(0, 0) };      // Left wall
+    Wall wall4 = createWall(&edge1);
+    edge4.wall = wall4;
 
     edgeArrayPushBack(&colliders, edge1);
     edgeArrayPushBack(&colliders, edge2);
     edgeArrayPushBack(&colliders, edge3);
     edgeArrayPushBack(&colliders, edge4);
+
+    for (int i = 0; i < RAY_AMOUNT; i++) {
+        wallSprites[i] = createRenderedBody("./res/images/default");
+    }
 
     world->walls = colliders;
 }

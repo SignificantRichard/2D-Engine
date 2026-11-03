@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
 typedef struct {
     char* texture; // file name
@@ -6,6 +8,7 @@ typedef struct {
     int voffset;
     int lowCutoff; // the low point of a window
     int highCutoff; // the high point of a window
+    Edge* parent;
 } Wall;
 
 /**
@@ -13,9 +16,10 @@ typedef struct {
  * 
  * @return Wall 
  */
-Wall createWall() {
+Wall createWall(Edge* parent) {
     Wall wall;
     wall.texture = "default";
+    wall.parent = parent;
 
     return wall;
 }
