@@ -3,6 +3,14 @@
 #include <stdio.h>
 #include <math.h>
 
+/**
+ * Creates a new Vect struct with the given x and y values.
+ * 
+ * @param x The x value of the vector.
+ * @param y The y value of the vector.
+ * 
+ * @return A new Vect struct with the given x and y values.
+ */
 Vect createVector(float x, float y) {
     Vect vec;
     vec.x = x;
@@ -10,40 +18,80 @@ Vect createVector(float x, float y) {
     return vec;
 }
 
+/**
+ * Adds two Vect structs together.
+ * 
+ * @param original The Vect struct to add to.
+ * @param additor The Vect struct to add.
+ */
 void addVectors(Vect* original, Vect* additor) {
     original->x += additor->x;
     original->y += additor->y;
 }
 
+/**
+ * Subtracts two Vect structs together.
+ * 
+ * @param original The Vect struct to subtract from.
+ * @param subtractor The Vect struct to subtract.
+ */
 void subVectors(Vect* original, Vect* subtractor) {
     original->x -= subtractor->x;
     original->y -= subtractor->y;
 }
 
+/**
+ * Multiplies a Vect struct by a scalar value.
+ * 
+ * @param original The Vect struct to multiply.
+ * @param multiplier The scalar value to multiply by.
+ */
 void multVectors(Vect* original, Vect* multiplier) {
     original->x *= multiplier->x;
     original->y *= multiplier->y;
 }
 
+/**
+ * Divides a Vect struct by a scalar value.
+ * 
+ * @param original The Vect struct to divide.
+ * @param dividor The scalar value to divide by.
+ */
 void diviVectors(Vect* original, Vect* dividor) {
     original->x /= dividor->x;
     original->y /= dividor->y;
 }
 
+/**
+ * Calculates the magnitude of two Vect structs.
+ * 
+ * @param v1 The first Vect struct.
+ * @param v2 The second Vect struct.
+ * 
+ * @return The magnitude of the difference between the two Vect structs.
+ */
 float magniVectors(Vect* v1, Vect* v2) {
     return sqrtf(pow(v1->x - v2->x, 2) + pow(v1->y - v2->y, 2));
 }
 
+/**
+ * Calculates the magnitude of a single Vect struct.
+ * 
+ * @param v The Vect struct.
+ * 
+ * @return The magnitude of the Vect struct.
+ */
 float magniVector(Vect* v) {
     return sqrtf(pow(v->x, 2) + pow(v->y, 2));
 }
 
-Vect* createVectorArray() {
-    Vect* arr = malloc(sizeof(Vect));
-    return arr;
-}
-
-// Create and allocate a new Vect dynamic array
+/**
+ * Creates a new VectArray struct with the given initial capacity.
+ * 
+ * @param initialCapacity The initial capacity of the array.
+ * 
+ * @return A new VectArray struct with the given initial capacity.
+ */
 VectArray createVectArray(int initialCapacity) {
     VectArray arr;
     arr.size = 0;
@@ -57,7 +105,11 @@ VectArray createVectArray(int initialCapacity) {
     return arr;
 }
 
-// Internal helper to double capacity when full
+/**
+ * Doubles the capacity of a VectArray struct.
+ * 
+ * @param arr The VectArray struct to double the capacity of.
+ */
 void expandVectArray(VectArray* arr) {
     int newCapacity = arr->capacity * 2;
     Vect* newData = (Vect*)realloc(arr->data, newCapacity * sizeof(Vect));
@@ -72,7 +124,12 @@ void expandVectArray(VectArray* arr) {
     arr->capacity = newCapacity;
 }
 
-// Append an item to the end
+/**
+ * Appends a new Vect struct to the end of a VectArray struct.
+ * 
+ * @param arr The VectArray struct to append to.
+ * @param add The Vect struct to append.
+ */
 void vectArrayPushBack(VectArray* arr, Vect add) {
     if (arr->size >= arr->capacity) {
         expandVectArray(arr);
@@ -81,7 +138,13 @@ void vectArrayPushBack(VectArray* arr, Vect add) {
     arr->size++;
 }
 
-// Replace an element at a valid index
+/**
+ * Replaces an element at a valid index in a VectArray struct.
+ * 
+ * @param arr The VectArray struct to replace in.
+ * @param pos The index to replace.
+ * @param with The new Vect struct to replace with.
+ */
 void vectArrayReplace(VectArray* arr, int pos, Vect with) {
     if (pos > arr->size) {
         printf("Position %zu is invalid (too large for array size %zu)\n", pos, arr->size);
@@ -94,7 +157,12 @@ void vectArrayReplace(VectArray* arr, int pos, Vect with) {
     arr->data[pos] = with;
 }
 
-// Shrink allocation down by 'by' elements (or to current size if requested excess)
+/**
+ * Shrink the capacity of a VectArray struct by a specified amount.
+ * 
+ * @param arr The VectArray struct to shrink.
+ * @param by The amount to shrink by.
+ */
 void shrinkVectArray(VectArray* arr, int by) {
     if (by == 0 || arr->capacity <= arr->size) return;
 
@@ -118,7 +186,11 @@ void shrinkVectArray(VectArray* arr, int by) {
     arr->capacity = targetCapacity;
 }
 
-// Free memory allocated by the dynamic array
+/**
+ * Frees the memory allocated by a VectArray struct.
+ * 
+ * @param arr The VectArray struct to free.
+ */
 void freeVectArray(VectArray* arr) {
     if (arr->data) {
         free(arr->data);

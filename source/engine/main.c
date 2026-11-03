@@ -105,7 +105,7 @@ void drawLine(SDL_Surface* surface, int x0, int y0, int x1, int y1, int r, int g
 
 // Do game checks here
 void tickHit(World* world) {
-
+    onTick(world);
 }
 
 int Work() {
