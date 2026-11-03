@@ -24,7 +24,13 @@
 #include <math.h>
 #include <SDL3/SDL.h>
 
+#define rotationSpeed 0.1f
+
 static RenderQueue renderQueue;
+
+static float rotationDirection = 0.0f; // player rotation
+static float walkDirection = 0.0f;
+static float rotation = 0.0f;
 
 void onTick() {
 
@@ -32,14 +38,54 @@ void onTick() {
 
 void playerMove(World* world) {
     RenderedBody* plr = &world->player;
+
+    rotation += rotationDirection;
+
+    while (rotation < 0) {
+        rotation += TPI;
+    }
+    while (rotation > TPI) {
+        rotation -= TPI;
+    }
+
+    float x = cosf(rotation) * walkDirection;
+    float y = sinf(rotation) * walkDirection;
+
+    plr->body.moveDirection = Vector_new(x, y);
+
     moveAndSlide(plr, world);
+}
+
+void sight(World* world) {
+    int amount = 30;
+    int range = 250;
+    float fov = PI / 2;
+    RaycastHit rays[amount];
+
+    float step = fov / amount * 2;
+
+    Vect facing = Vector_new(cosf(rotation + fov) * range, sinf(rotation + fov) * range);
+
+    // blast a stupid amount of rays to check for walls
+    for (int i = 0; i < amount; i++) {
+        for (int j = 0; j < world->walls.size; j++) {
+            Edge wall = world->walls.data[j];
+            RaycastHit ray = raycast(world->player.body.position, facing, wall);
+        }
+        fov -= step;
+    }
+
+    
 }
 
 void onRender(World* world) {
     playerMove(world);
+    sight(world);
 }
 
 int onEvent(SDL_Event* event, World* world) {
+    // pre instance rendered wall objects
+
     Vect plrMovementVect = world->player.body.moveDirection;
     
     while (SDL_PollEvent(event)) {
@@ -47,35 +93,33 @@ int onEvent(SDL_Event* event, World* world) {
             return 1;
         } else if (event->type == SDL_EVENT_KEY_DOWN) {
             switch (event->key.key) {
-                case SDLK_UP:
-                    plrMovementVect.y = -1.0f;
-                    break;
-                case SDLK_DOWN:
-                    plrMovementVect.y = 1.0f;
-                    break;
                 case SDLK_LEFT:
-                    plrMovementVect.x = -1.0f;
+                    rotationDirection = -rotationSpeed;
                     break;
                 case SDLK_RIGHT:
-                    plrMovementVect.x = 1.0f;
+                    rotationDirection = rotationSpeed;
+                    break;
+                case SDLK_UP:
+                    walkDirection = -1.0f;
+                    break;
+                case SDLK_DOWN:
+                    walkDirection = 1.0f;
                     break;
                 default:
                     break;
             }
-            world->player.body.moveDirection = plrMovementVect;
         } else if (event->type == SDL_EVENT_KEY_UP) {
             SDL_Keycode key = event->key.key;
 
-            if (key == SDLK_RIGHT && plrMovementVect.x >= 1.0f) {
-                plrMovementVect.x = 0.0f;
-            } else if (key == SDLK_LEFT && plrMovementVect.x <= -1.0f) {
-                plrMovementVect.x = 0.0f;
+            if (key == SDLK_RIGHT && rotationDirection >= rotationSpeed) {
+                rotationDirection = 0.0f;
+            } else if (key == SDLK_LEFT && rotationDirection <= -rotationSpeed) {
+                rotationDirection = 0.0f;
             } else if (key == SDLK_UP && plrMovementVect.y <= -1.0f) {
-                plrMovementVect.y = 0.0f;
+                walkDirection = 0.0f;
             } else if (key == SDLK_DOWN && plrMovementVect.y >= 1.0f) {
-                plrMovementVect.y = 0.0f;
+                walkDirection = 0.0f;
             }
-            world->player.body.moveDirection = plrMovementVect;
         }
     }
     return 0;
