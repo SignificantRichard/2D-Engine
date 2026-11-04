@@ -14,6 +14,7 @@
 
 // game specific stuff
 #include "wall.h"
+#include "hud.h"
 
 // Self
 #include "game_main.h"
@@ -27,14 +28,18 @@
 
 // envar
 #define rotationSpeed 0.1f
-#define RAY_AMOUNT 640
+#define RAY_AMOUNT 320
 #define FOV PI
 
 static RenderQueue renderQueue;
+static RenderQueue hudQueue;
 
 static float rotationDirection = 0.0f; // player rotation
 static float walkDirection = 0.0f;
 static float rotation = 0.0f;
+
+static HUDInfo hud;
+
 static RenderedBody* wallSprites;
 
 void onTick(World* world) {
@@ -166,15 +171,29 @@ int onEvent(SDL_Event* event, World* world) {
 }
 
 // What you want to render
-RenderQueue* passRenderQueue() {
-    return &renderQueue;
+RenderQueue** passRenderQueue() {
+    RenderQueue** queues = malloc(sizeof(RenderQueue*) * 2);
+    queues[0] = &renderQueue;
+    queues[1] = &hudQueue;
+    return queues;
 }
 
 void onWorldGen(World* world) {
     printf("Hello world!\n");
 
     renderQueue = createRenderQueue();
+    hud = createHUD();
 
+    // Allocate on the heap so it persists after onWorldGen returns
+    RenderedBody* hudBackground = malloc(sizeof(RenderedBody));
+    *hudBackground = createRenderedBody("./source/res/images/hud");
+    hudBackground->body.position.x = 0;
+    hudBackground->body.position.y = 0;
+    hudBackground->sprite = resample(hudBackground->sprite, INTERNAL_WIDTH, 100, 3);
+    
+    renderQueuePushBack(&hudQueue, hudBackground);
+    renderQueuePushBack(&hudQueue, &hud.portrait.portraits);
+    
     EdgeArray colliders;
     colliders = createEdgeArray(0);
     
@@ -219,7 +238,7 @@ void onWorldGen(World* world) {
             wallSprites[i].sprite,
             INTERNAL_WIDTH / RAY_AMOUNT,
             INTERNAL_HEIGHT,
-            3
+            0
         );
         renderQueuePushBack(&renderQueue, &wallSprites[i]);
     }

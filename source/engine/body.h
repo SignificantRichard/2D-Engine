@@ -34,6 +34,7 @@ typedef struct {
     Sprite sprite; // what is drawn
     Body body; // movement
     float renderPercentage; // how much of height is rendered
+    float renderPercentageStart; // start how much of height is rendered
 } RenderedBody;
 
 RenderedBody createRenderedBody(char* spriteFilePath);

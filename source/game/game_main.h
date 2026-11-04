@@ -21,6 +21,6 @@ void onTick(World* world);
 void onRender(World* world);
 int onEvent(SDL_Event* event, World* world);
 void onWorldGen(World* world);
-RenderQueue* passRenderQueue();
+RenderQueue** passRenderQueue();
 
 #endif

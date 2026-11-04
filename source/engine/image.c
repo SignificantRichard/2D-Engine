@@ -106,22 +106,31 @@ Sprite loadImageAsSprite(char* path) {
     for (int i = 0; i < heightLength; i++) {
         height = (height << 8) + imageData.content[idx++];
     }
+    
+    // Read alpha flag (0 means alpha is enabled in your encoder script)
+    uint8_t alphaEnabled = imageData.content[idx++];
+
+    printf("alpha enabled? %d\n", alphaEnabled);
 
     Sprite sprite = constructSprite(width, height);
 
-    uint8_t* palette = &imageData.content[8];
+    // Each palette entry is 4 bytes (RGBA) if alpha is enabled, or 3 bytes (RGB) if disabled
+    int bytesPerPaletteEntry = (alphaEnabled == 0) ? 4 : 3;
+    uint8_t* palette = &imageData.content[idx];
 
-    int colorTableOffset = headerLength + 2;
+    // Compute color table offset robustly using total file size and dimensions
+    int colorTableOffset = imageData.size - (width * height);
 
     for (int i = 0; i < width * height; i++) {
         if (colorTableOffset + i >= imageData.size) break;
 
         uint8_t paletteIndex = imageData.content[colorTableOffset + i];
-        int r = palette[paletteIndex * 3 + 0];
-        int g = palette[paletteIndex * 3 + 1];
-        int b = palette[paletteIndex * 3 + 2];
+        int r = palette[paletteIndex * bytesPerPaletteEntry + 0];
+        int g = palette[paletteIndex * bytesPerPaletteEntry + 1];
+        int b = palette[paletteIndex * bytesPerPaletteEntry + 2];
+        int a = (bytesPerPaletteEntry == 4) ? palette[paletteIndex * bytesPerPaletteEntry + 3] : 255;
 
-        uint32_t color = makeColor(r, g, b, 255);
+        uint32_t color = makeColor(r, g, b, a);
         int x = i % width;
         int y = i / width;
         setPixel(&sprite, x, y, color);

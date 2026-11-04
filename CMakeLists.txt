@@ -17,6 +17,7 @@ set(SOURCE_FILES
     ./source/engine/collision.c
 
     ./source/game/wall.c
+    ./source/game/hud.c
     
     ./source/game/game_main.c
     

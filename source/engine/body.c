@@ -43,6 +43,7 @@ RenderedBody createRenderedBody(char* spriteFilePath) {
     
     Sprite sprite = loadImageAsSprite(spriteFilePath);
     render.sprite = sprite;
+    render.renderPercentageStart = 0.0f;
     render.renderPercentage = 1.0f;
 
     return render;

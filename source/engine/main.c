@@ -7,6 +7,12 @@
 #include "renderqueue.h"
 #include "../game/game_main.h"
 
+static inline uint8_t clampColor(float val) {
+    if (val < 0.0f) return 0;
+    if (val > 255.0f) return 255;
+    return (uint8_t)val;
+}
+
 World initEngine() {
     World world;
     // calloc MAX_ELEMENTS_IN_WORLD elements because I can't be bothered
@@ -57,6 +63,37 @@ int ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, i
     return 0;
 }
 
+int GrabPixel(SDL_Surface* surface, Uint32 x, Uint32 y) {
+    if (x < 0 || y < 0 || x > INTERNAL_WIDTH || y > INTERNAL_HEIGHT) {
+        return 1;
+    }
+
+    // Lock surface for direct pixel access
+    if (SDL_MUSTLOCK(surface)) {
+        if (!SDL_LockSurface(surface)) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock surface: %s", SDL_GetError());
+            return 1;
+        }
+    }
+
+    // Cast raw void* pixel buffer to 32-bit unsigned integer pointer (for RGBA8888)
+    Uint32* pixels = (Uint32*)surface->pixels;
+    int width = surface->w;
+    int height = surface->h;
+    
+    // Pitch is in bytes. Divide by sizeof(Uint32) to get pitch in 32-bit pixels
+    int pitchInPixels = surface->pitch / sizeof(Uint32);
+
+    // Map standard R, G, B, A to the pixel format of this surface
+    Uint32 color = pixels[y * pitchInPixels + x];
+
+    // Unlock surface when finished
+    if (SDL_MUSTLOCK(surface)) {
+        SDL_UnlockSurface(surface);
+    }
+    return color;
+}
+
 void ModifyPixels(SDL_Surface* surface, int x, int y, int w, int h, int r, int g, int b, int a) {
     for (int i = x; i < w+x; i++) {
         for (int j = y; j < h+y; j++) {
@@ -82,13 +119,17 @@ void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
 
 void drawSpriteFromBody(SDL_Surface* surface, int x, int y, RenderedBody* renderedBody) {
     Sprite sprite = renderedBody->sprite;
+    int startAt = sprite.height * renderedBody->renderPercentageStart; 
     int stopAt = sprite.height * renderedBody->renderPercentage;
     for (int i = 0; i < sprite.size; i++) {
+
         int localX = i % sprite.width;
         int localY = i / sprite.width;
 
         if (localY >= stopAt) {
             break;
+        } else if (localY < startAt) {
+            continue;
         }
         
         uint32_t color = getRenderPixel(&sprite, i, 0); // same as x, y
@@ -96,6 +137,19 @@ void drawSpriteFromBody(SDL_Surface* surface, int x, int y, RenderedBody* render
         int g = getColorFragment(color, 2);
         int b = getColorFragment(color, 1);
         int a = getColorFragment(color, 0);
+
+        if (a == 0) {
+            continue;
+        } else if (a != 255) {
+            // time to blend
+            float perc = a / 255;
+            Uint32 baseColor = GrabPixel(surface, x + localX, y + localY);
+            int r = clampColor(getColorFragment(color, 3) * perc + getColorFragment(baseColor, 3) * (1.0f - perc));
+            int g = clampColor(getColorFragment(color, 2) * perc + getColorFragment(baseColor, 2) * (1.0f - perc));
+            int b = clampColor(getColorFragment(color, 1) * perc + getColorFragment(baseColor, 1) * (1.0f - perc));
+            int a = clampColor(getColorFragment(color, 0) * perc + getColorFragment(baseColor, 0) * (1.0f - perc));
+            color = makeColor(r, g, b, a);
+        }
 
         ModifyPixel(surface, x + localX, y + localY, r, g, b, a);
     }
@@ -181,12 +235,20 @@ int Work() {
             break;
         onRender(&world);
         
-        RenderQueue* renderQueue = passRenderQueue();
+        RenderQueue** renderQueues = passRenderQueue();
+        RenderQueue* renderQueue = renderQueues[0];
+        RenderQueue* hudQueue = renderQueues[1];
 
         for (int i = 0; i < renderQueue->size; i++) {
             RenderedBody* body = renderQueue->sprites[i];
             drawSpriteFromBody(surface, body->body.position.x, body->body.position.y, body);
         }
+        for (int i = 0; i < hudQueue->size; i++) {
+            RenderedBody* body = hudQueue->sprites[i];
+            drawSpriteFromBody(surface, body->body.position.x, body->body.position.y, body);
+        }
+
+        free(renderQueues);
 
         // render collisions (walls)
         // for (int i = 0; i < world.walls.size; i++) {
