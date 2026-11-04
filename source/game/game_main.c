@@ -12,9 +12,6 @@
 #include "../engine/raycast.h"
 #include "../engine/collision.h"
 
-// game specific stuff
-#include "wall.h"
-
 // Self
 #include "game_main.h"
 
@@ -25,17 +22,7 @@
 #include <math.h>
 #include <SDL3/SDL.h>
 
-// envar
-#define rotationSpeed 0.1f
-#define RAY_AMOUNT 30
-#define FOV PI
-
 static RenderQueue renderQueue;
-
-static float rotationDirection = 0.0f; // player rotation
-static float walkDirection = 0.0f;
-static float rotation = 0.0f;
-static RenderedBody* wallSprites;
 
 void onTick(World* world) {
 
@@ -43,65 +30,14 @@ void onTick(World* world) {
 
 void playerMove(World* world) {
     RenderedBody* plr = &world->player;
-
-    rotation += rotationDirection;
-
-    while (rotation < 0) {
-        rotation += TPI;
-    }
-    while (rotation > TPI) {
-        rotation -= TPI;
-    }
-
-    float x = cosf(rotation) * walkDirection;
-    float y = sinf(rotation) * walkDirection;
-
-    plr->body.moveDirection = Vector_new(x, y);
-
     moveAndSlide(plr, world);
-}
-
-void sight(World* world) {
-    int range = 250;
-    RaycastHit rays[RAY_AMOUNT];
-
-    // Spread rays evenly across the field of view (FOV) centered on 'rotation'
-    float startAngle = rotation - (FOV / 2.0f);
-    float step = FOV / (float)RAY_AMOUNT;
-
-    for (int i = 0; i < RAY_AMOUNT; i++) {
-        float rayAngle = startAngle + (i * step);
-
-        // Recalculate facing direction vector for EACH ray
-        Vect facing = Vector_new(cosf(rayAngle) * range, sinf(rayAngle) * range);
-
-        float minDistance = 1e9f; // Track closest intersection
-        int hitAny = 0;
-
-        for (int j = 0; j < world->walls.size; j++) {
-            Edge wall = world->walls.data[j];
-            RaycastHit ray = raycast(world->player.body.position, facing, wall);
-
-            if (ray.hit && ray.distance < minDistance) {
-                minDistance = ray.distance;
-                hitAny = 1;
-            }
-        }
-
-        if (hitAny) {
-            wallSprites[i].body.position.y = minDistance;
-        }
-    }
 }
 
 void onRender(World* world) {
     playerMove(world);
-    sight(world);
 }
 
 int onEvent(SDL_Event* event, World* world) {
-    // pre instance rendered wall objects
-
     Vect plrMovementVect = world->player.body.moveDirection;
     
     while (SDL_PollEvent(event)) {
@@ -109,33 +45,35 @@ int onEvent(SDL_Event* event, World* world) {
             return 1;
         } else if (event->type == SDL_EVENT_KEY_DOWN) {
             switch (event->key.key) {
-                case SDLK_LEFT:
-                    rotationDirection = -rotationSpeed;
-                    break;
-                case SDLK_RIGHT:
-                    rotationDirection = rotationSpeed;
-                    break;
                 case SDLK_UP:
-                    walkDirection = -1.0f;
+                    plrMovementVect.y = -1.0f;
                     break;
                 case SDLK_DOWN:
-                    walkDirection = 1.0f;
+                    plrMovementVect.y = 1.0f;
+                    break;
+                case SDLK_LEFT:
+                    plrMovementVect.x = -1.0f;
+                    break;
+                case SDLK_RIGHT:
+                    plrMovementVect.x = 1.0f;
                     break;
                 default:
                     break;
             }
+            world->player.body.moveDirection = plrMovementVect;
         } else if (event->type == SDL_EVENT_KEY_UP) {
             SDL_Keycode key = event->key.key;
 
-            if (key == SDLK_RIGHT && rotationDirection >= rotationSpeed) {
-                rotationDirection = 0.0f;
-            } else if (key == SDLK_LEFT && rotationDirection <= -rotationSpeed) {
-                rotationDirection = 0.0f;
-            } else if (key == SDLK_UP && walkDirection <= -1.0f) {
-                walkDirection = 0.0f;
-            } else if (key == SDLK_DOWN && walkDirection >= 1.0f) {
-                walkDirection = 0.0f;
+            if (key == SDLK_RIGHT && plrMovementVect.x >= 1.0f) {
+                plrMovementVect.x = 0.0f;
+            } else if (key == SDLK_LEFT && plrMovementVect.x <= -1.0f) {
+                plrMovementVect.x = 0.0f;
+            } else if (key == SDLK_UP && plrMovementVect.y <= -1.0f) {
+                plrMovementVect.y = 0.0f;
+            } else if (key == SDLK_DOWN && plrMovementVect.y >= 1.0f) {
+                plrMovementVect.y = 0.0f;
             }
+            world->player.body.moveDirection = plrMovementVect;
         }
     }
     return 0;
@@ -154,34 +92,17 @@ void onWorldGen(World* world) {
 
     EdgeArray colliders;
     colliders = createEdgeArray(0);
-    
+
     // Test walls
-    Wall wall1 = createWall();
-    Wall wall2 = createWall();
-    Wall wall3 = createWall();
-    Wall wall4 = createWall();
-    Edge edge1 = { .a = Vector_new(0, 0), .b = Vector_new(200, 0), .wall=wall1}; // Top wall
-    Edge edge2 = { .a = Vector_new(200, 0), .b = Vector_new(200, 200), .wall=wall2}; // Right wall
-    Edge edge3 = { .a = Vector_new(200, 200), .b = Vector_new(0, 200), .wall=wall3}; // Bottom wall
-    Edge edge4 = { .a = Vector_new(0, 200), .b = Vector_new(0, 0), .wall=wall4}; // Left wall
+    Edge edge1 = { .a = Vector_new(0, 0),     .b = Vector_new(200, 0) };    // Top wall
+    Edge edge2 = { .a = Vector_new(200, 0),   .b = Vector_new(200, 200) };  // Right wall
+    Edge edge3 = { .a = Vector_new(200, 200), .b = Vector_new(0, 200) };    // Bottom wall
+    Edge edge4 = { .a = Vector_new(0, 200),   .b = Vector_new(0, 0) };      // Left wall
 
     edgeArrayPushBack(&colliders, edge1);
     edgeArrayPushBack(&colliders, edge2);
     edgeArrayPushBack(&colliders, edge3);
     edgeArrayPushBack(&colliders, edge4);
 
-    wallSprites = malloc(RAY_AMOUNT * sizeof(RenderedBody));
-
-    // size of one sprite
-    int spSz = INTERNAL_WIDTH / 30;
-    for (int i = 0; i < RAY_AMOUNT; i++) {
-        wallSprites[i] = createRenderedBody("./source/res/images/default");
-        wallSprites[i].sprite = resample(wallSprites[i].sprite, spSz, 16, 0);
-        wallSprites[i].body.position.x = i * spSz;
-        renderQueuePushBack(&renderQueue, &wallSprites[i]);
-    }
-
     world->walls = colliders;
-
-    world->player.sprite.brightness = 10;
 }

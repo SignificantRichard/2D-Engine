@@ -44,7 +44,7 @@ Sprite constructSprite(int width, int height) {
     return sprite;
 }
 
-uint32_t getPixel(Sprite* sprite, int x, int y) {
+uint32_t getRenderPixel(Sprite* sprite, int x, int y) {
     uint32_t color = sprite->data[y * sprite->width + x];
     int r = clampColor(getColorFragment(color, 3) * sprite->brightness);
     int g = clampColor(getColorFragment(color, 2) * sprite->brightness);
@@ -53,6 +53,11 @@ uint32_t getPixel(Sprite* sprite, int x, int y) {
     color = makeColor(r, g, b, a);
     return color;
 }
+
+uint32_t getPixel(Sprite* sprite, int x, int y) {
+    return sprite->data[y * sprite->width + x];
+}
+
 
 void setPixel(Sprite* sprite, int x, int y, uint32_t color) {
     sprite->data[y * sprite->width + x] = color;
@@ -101,22 +106,31 @@ Sprite loadImageAsSprite(char* path) {
     for (int i = 0; i < heightLength; i++) {
         height = (height << 8) + imageData.content[idx++];
     }
+    
+    // Read alpha flag (0 means alpha is enabled in your encoder script)
+    uint8_t alphaEnabled = imageData.content[idx++];
+
+    printf("alpha enabled? %d\n", alphaEnabled);
 
     Sprite sprite = constructSprite(width, height);
 
-    uint8_t* palette = &imageData.content[8];
+    // Each palette entry is 4 bytes (RGBA) if alpha is enabled, or 3 bytes (RGB) if disabled
+    int bytesPerPaletteEntry = (alphaEnabled == 0) ? 4 : 3;
+    uint8_t* palette = &imageData.content[idx];
 
-    int colorTableOffset = headerLength + 2;
+    // Compute color table offset robustly using total file size and dimensions
+    int colorTableOffset = imageData.size - (width * height);
 
     for (int i = 0; i < width * height; i++) {
         if (colorTableOffset + i >= imageData.size) break;
 
         uint8_t paletteIndex = imageData.content[colorTableOffset + i];
-        int r = palette[paletteIndex * 3 + 0];
-        int g = palette[paletteIndex * 3 + 1];
-        int b = palette[paletteIndex * 3 + 2];
+        int r = palette[paletteIndex * bytesPerPaletteEntry + 0];
+        int g = palette[paletteIndex * bytesPerPaletteEntry + 1];
+        int b = palette[paletteIndex * bytesPerPaletteEntry + 2];
+        int a = (bytesPerPaletteEntry == 4) ? palette[paletteIndex * bytesPerPaletteEntry + 3] : 255;
 
-        uint32_t color = makeColor(r, g, b, 255);
+        uint32_t color = makeColor(r, g, b, a);
         int x = i % width;
         int y = i / width;
         setPixel(&sprite, x, y, color);
@@ -126,28 +140,6 @@ Sprite loadImageAsSprite(char* path) {
     free(imageData.content);
 
     return sprite;
-}
-
-static inline int clamp(int val, int min, int max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
-}
-
-static inline uint8_t clampColor(float val) {
-    if (val < 0.0f) return 0;
-    if (val > 255.0f) return 255;
-    return (uint8_t)val;
-}
-
-static float cubicWeight(float x) {
-    x = fabsf(x);
-    if (x <= 1.0f) {
-        return 1.5f * x * x * x - 2.5f * x * x + 1.0f;
-    } else if (x < 2.0f) {
-        return -0.5f * x * x * x + 2.5f * x * x - 4.0f * x + 2.0f;
-    }
-    return 0.0f;
 }
 
 Sprite resample(Sprite original, int w, int h, int method) {
@@ -163,6 +155,21 @@ Sprite resample(Sprite original, int w, int h, int method) {
                 int srcY = clamp((int)(y * scaleY), 0, original.height - 1);
                 for (int x = 0; x < w; x++) {
                     int srcX = clamp((int)(x * scaleX), 0, original.width - 1);
+                    setPixel(&new, x, y, getPixel(&original, srcX, srcY));
+                }
+            }
+            break;
+        }
+
+        case REPEAT: {
+            for (int y = 0; y < h; y++) {
+                int srcY = (int)(y * scaleY) % original.height;
+                if (srcY < 0) srcY += original.height;
+
+                for (int x = 0; x < w; x++) {
+                    int srcX = (int)(x * scaleX) % original.width;
+                    if (srcX < 0) srcX += original.width;
+
                     setPixel(&new, x, y, getPixel(&original, srcX, srcY));
                 }
             }
@@ -195,8 +202,7 @@ Sprite resample(Sprite original, int w, int h, int method) {
                     uint32_t c01 = getPixel(&original, x0, y1);
                     uint32_t c11 = getPixel(&original, x1, y1);
 
-                    // Interpolate each RGBA channel separately (using getColorFragment(color, place))
-                    // place index mapping based on your utility: 3 = red, 2 = green, 1 = blue, 0 = alpha
+                    // Interpolate each RGBA channel separately
                     float r = (1 - fx) * (1 - fy) * getColorFragment(c00, 3) +
                               fx * (1 - fy)       * getColorFragment(c10, 3) +
                               (1 - fx) * fy       * getColorFragment(c01, 3) +

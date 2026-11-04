@@ -17,10 +17,12 @@ typedef struct {
 enum INTERPOLATION_METHOD {
     NEAREST_NEIGHBOR,
     BILINEAR,
-    BICUBIC
+    BICUBIC,
+    REPEAT
 };
 
 Sprite constructSprite(int width, int height);
+uint32_t getRenderPixel(Sprite* sprite, int x, int y);
 uint32_t getPixel(Sprite* sprite, int x, int y);
 void setPixel(Sprite* sprite, int x, int y, uint32_t color);
 uint32_t makeColor(int r, int g, int b, int a);
