@@ -109,6 +109,44 @@ Sprite resample(Sprite original, int w, int h, int method) {
                 }
             }
             break;
+        case BILINEAR:
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    uint32_t color;
+                    for (int y1 = 0; y1 <= 1; y++) {
+                        for (int x1 = 0; x1 < 1; x++) {
+                            int originalX = (x * h + y) % (original.width * original.height);
+                            uint32_t compColor = getPixel(&original, originalX / original.height, originalX % original.height);
+                            int r = ((compColor >> 24) & 0xff) / 4;
+                            int g = ((compColor >> 16) & 0xff) / 4;
+                            int b = ((compColor >> 8) & 0xff) / 4;
+                            int a = (compColor & 0xff) / 4;
+                            color += (r << 24) + (g << 16) + (b << 8) + a;
+                        }
+                    }
+                   setPixel(&new, x, y, color);
+                }
+            }
+            break;
+        case BICUBIC:
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    uint32_t color;
+                    for (int y1 = -1; y1 <= 1; y++) {
+                        for (int x1 = -1; x1 < 1; x++) {
+                            int originalX = (x * h + y) % (original.width * original.height);
+                            uint32_t compColor = getPixel(&original, originalX / original.height, originalX % original.height);
+                            int r = ((compColor >> 24) & 0xff) / 9;
+                            int g = ((compColor >> 16) & 0xff) / 9;
+                            int b = ((compColor >> 8) & 0xff) / 9;
+                            int a = (compColor & 0xff) / 9;
+                            color += (r << 24) + (g << 16) + (b << 8) + a;
+                        }
+                    }
+                   setPixel(&new, x, y, color);
+                }
+            }
+            break;
         default:
             printf("Invalid resample method used");
             break;

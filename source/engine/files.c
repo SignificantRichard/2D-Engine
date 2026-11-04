@@ -10,13 +10,12 @@
 BinaryFileContents readBinFromFile(const char* fileName) {
     struct stat info;
     BinaryFileContents binFileContent;
+    FILE* fptr = fopen(fileName, "rb");
     
     if (stat(fileName, &info) != 0) {
         perror("Failed to read file stats");
         return binFileContent;
     }
-
-    FILE* fptr = fopen(fileName, "rb");
     if (fptr == NULL) {
         perror("Failed to open file");
         return binFileContent;
