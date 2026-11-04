@@ -182,4 +182,6 @@ void onWorldGen(World* world) {
     }
 
     world->walls = colliders;
+
+    world->player.sprite.brightness = 10;
 }

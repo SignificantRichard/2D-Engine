@@ -70,7 +70,7 @@ void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
         int localX = i % sprite->width;
         int localY = i / sprite->width;
         
-        uint32_t color = sprite->data[i];
+        uint32_t color = getPixel(sprite, i, 0); // same as x, y
         int r = getColorFragment(color, 3);
         int g = getColorFragment(color, 2);
         int b = getColorFragment(color, 1);

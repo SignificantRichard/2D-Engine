@@ -5,11 +5,35 @@
 #include "image.h"
 #include "files.h"
 
+static inline int clamp(int val, int min, int max) {
+    if (val < min) return min;
+    if (val > max) return max;
+    return val;
+}
+
+static inline uint8_t clampColor(float val) {
+    if (val < 0.0f) return 0;
+    if (val > 255.0f) return 255;
+    return (uint8_t)val;
+}
+
+static float cubicWeight(float x) {
+    x = fabsf(x);
+    if (x <= 1.0f) {
+        return 1.5f * x * x * x - 2.5f * x * x + 1.0f;
+    } else if (x < 2.0f) {
+        return -0.5f * x * x * x + 2.5f * x * x - 4.0f * x + 2.0f;
+    }
+    return 0.0f;
+}
+
+
 Sprite constructSprite(int width, int height) {
     Sprite sprite;
     sprite.width = width;
     sprite.height = height;
     sprite.size = width * height;
+    sprite.brightness = 1.0f;
     
     sprite.data = (uint32_t*)malloc(sprite.size * sizeof(uint32_t));
 
@@ -21,7 +45,13 @@ Sprite constructSprite(int width, int height) {
 }
 
 uint32_t getPixel(Sprite* sprite, int x, int y) {
-    return sprite->data[y * sprite->width + x];
+    uint32_t color = sprite->data[y * sprite->width + x];
+    int r = clampColor(getColorFragment(color, 3) * sprite->brightness);
+    int g = clampColor(getColorFragment(color, 2) * sprite->brightness);
+    int b = clampColor(getColorFragment(color, 1) * sprite->brightness);
+    int a = clampColor(getColorFragment(color, 0) * sprite->brightness);
+    color = makeColor(r, g, b, a);
+    return color;
 }
 
 void setPixel(Sprite* sprite, int x, int y, uint32_t color) {
