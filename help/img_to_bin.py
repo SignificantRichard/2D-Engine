@@ -22,7 +22,8 @@ def main():
             
         pallet = []
         colorTable = []
-        image = Image.open("./raw_images/" + fileName).convert("RGB")
+        alphaEnabled = False
+        image = Image.open("./raw_images/" + fileName).convert("RGBA")
         width, height = image.size
         print(f"Processing {fileName}: {width}x{height}")
 
@@ -32,6 +33,8 @@ def main():
                 if color in pallet:
                     colorTable.append(pallet.index(color))
                 else:
+                    if color[3] != 255:
+                        alphaEnabled = True
                     pallet.append(color)
                     colorTable.append(len(pallet) - 1)
 
@@ -46,19 +49,26 @@ def main():
             writtenWidth = toChars(width)
             writtenHeight = toChars(height)
 
-            header_size = len(pallet) * 3 + len(writtenWidth) + len(writtenHeight) + 2
+            header_size = len(pallet) * 3 + len(writtenWidth) + len(writtenHeight) + 3
             f.write(toChars(header_size))
 
             f.write(toChar(len(writtenWidth)))
             f.write(toChar(len(writtenHeight)))
-            
+
             f.write(writtenWidth)
             f.write(writtenHeight)
+
+            if alphaEnabled:
+                f.write(toChar(0))
+            else:
+                f.write(toChar(34))
 
             for color in pallet:
                 f.write(toChar(color[0]))
                 f.write(toChar(color[1]))
                 f.write(toChar(color[2]))
+                if alphaEnabled:
+                    f.write(toChar(color[3]))
 
             for element in colorTable:
                 f.write(toChar(element))

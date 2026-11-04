@@ -13,6 +13,8 @@
 #include "../engine/sound.h"
 #include "../engine/renderqueue.h"
 
+#include "wall.h"
+
 #include <SDL3/SDL.h>
 
 void onTick(World* world);
