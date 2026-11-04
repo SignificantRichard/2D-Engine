@@ -2,7 +2,6 @@
 #define EDGE_H
 
 #include "vector.h"
-#include "../game/wall.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -10,7 +9,6 @@
 typedef struct {
     Vect a;
     Vect b;
-    Wall wall;
 } Edge;
 
 
