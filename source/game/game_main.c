@@ -14,7 +14,6 @@
 
 // game specific stuff
 #include "wall.h"
-#include "hud.h"
 
 // Self
 #include "game_main.h"
@@ -32,13 +31,10 @@
 #define FOV PI
 
 static RenderQueue renderQueue;
-static RenderQueue hudQueue;
 
 static float rotationDirection = 0.0f; // player rotation
 static float walkDirection = 0.0f;
 static float rotation = 0.0f;
-
-static HUDInfo hud;
 
 static RenderedBody* wallSprites;
 
@@ -174,7 +170,6 @@ int onEvent(SDL_Event* event, World* world) {
 RenderQueue** passRenderQueue() {
     RenderQueue** queues = malloc(sizeof(RenderQueue*) * 2);
     queues[0] = &renderQueue;
-    queues[1] = &hudQueue;
     return queues;
 }
 
@@ -182,17 +177,6 @@ void onWorldGen(World* world) {
     printf("Hello world!\n");
 
     renderQueue = createRenderQueue();
-    hud = createHUD();
-
-    // Allocate on the heap so it persists after onWorldGen returns
-    RenderedBody* hudBackground = malloc(sizeof(RenderedBody));
-    *hudBackground = createRenderedBody("./source/res/images/hud");
-    hudBackground->body.position.x = 0;
-    hudBackground->body.position.y = 0;
-    hudBackground->sprite = resample(hudBackground->sprite, INTERNAL_WIDTH, 100, 3);
-    
-    renderQueuePushBack(&hudQueue, hudBackground);
-    renderQueuePushBack(&hudQueue, &hud.portrait.portraits);
     
     EdgeArray colliders;
     colliders = createEdgeArray(0);

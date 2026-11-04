@@ -237,17 +237,12 @@ int Work() {
         
         RenderQueue** renderQueues = passRenderQueue();
         RenderQueue* renderQueue = renderQueues[0];
-        RenderQueue* hudQueue = renderQueues[1];
 
         for (int i = 0; i < renderQueue->size; i++) {
             RenderedBody* body = renderQueue->sprites[i];
             drawSpriteFromBody(surface, body->body.position.x, body->body.position.y, body);
         }
-        for (int i = 0; i < hudQueue->size; i++) {
-            RenderedBody* body = hudQueue->sprites[i];
-            drawSpriteFromBody(surface, body->body.position.x, body->body.position.y, body);
-        }
-
+        
         free(renderQueues);
 
         // render collisions (walls)
