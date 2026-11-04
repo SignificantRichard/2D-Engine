@@ -70,7 +70,29 @@ void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
         int localX = i % sprite->width;
         int localY = i / sprite->width;
         
-        uint32_t color = getPixel(sprite, i, 0); // same as x, y
+        uint32_t color = getRenderPixel(sprite, i, 0); // same as x, y
+        int r = getColorFragment(color, 3);
+        int g = getColorFragment(color, 2);
+        int b = getColorFragment(color, 1);
+        int a = getColorFragment(color, 0);
+
+        ModifyPixel(surface, x + localX, y + localY, r, g, b, a);
+    }
+}
+
+void drawSpriteFromBody(SDL_Surface* surface, int x, int y, RenderedBody* renderedBody) {
+    Sprite sprite = renderedBody->sprite;
+    int stopAt = sprite.height * renderedBody->renderPercentage;
+    printf("%d\n", stopAt);
+    for (int i = 0; i < sprite.size; i++) {
+        int localX = i % sprite.width;
+        int localY = i / sprite.width;
+
+        if (localY >= stopAt) {
+            break;
+        }
+        
+        uint32_t color = getRenderPixel(&sprite, i, 0); // same as x, y
         int r = getColorFragment(color, 3);
         int g = getColorFragment(color, 2);
         int b = getColorFragment(color, 1);
@@ -164,14 +186,14 @@ int Work() {
 
         for (int i = 0; i < renderQueue->size; i++) {
             RenderedBody* body = renderQueue->sprites[i];
-            drawSprite(surface, body->body.position.x, body->body.position.y, &body->sprite);
+            drawSpriteFromBody(surface, body->body.position.x, body->body.position.y, body);
         }
 
         // render collisions (walls)
-        for (int i = 0; i < world.walls.size; i++) {
-            Edge edge = world.walls.data[i];
-            drawLine(surface, (int)edge.a.x, (int)edge.a.y, (int)edge.b.x, (int)edge.b.y, 255, 0, 255, 255);
-        }
+        // for (int i = 0; i < world.walls.size; i++) {
+        //     Edge edge = world.walls.data[i];
+        //     drawLine(surface, (int)edge.a.x, (int)edge.a.y, (int)edge.b.x, (int)edge.b.y, 255, 0, 255, 255);
+        // }
 
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);

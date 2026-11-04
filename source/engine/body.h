@@ -33,7 +33,7 @@ typedef struct {
 typedef struct {
     Sprite sprite; // what is drawn
     Body body; // movement
-    int alpha; // 255, set to 0 to hide
+    float renderPercentage; // how much of height is rendered
 } RenderedBody;
 
 RenderedBody createRenderedBody(char* spriteFilePath);
