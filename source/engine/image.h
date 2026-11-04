@@ -14,7 +14,9 @@ typedef struct {
 } Sprite;
 
 enum INTERPOLATION_METHOD {
-    NEAREST_NEIGHBOR
+    NEAREST_NEIGHBOR,
+    BILINEAR,
+    BICUBIC
 };
 
 Sprite constructSprite(int width, int height);
