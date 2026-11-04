@@ -11,6 +11,7 @@ typedef struct {
     int width;
     int height;
     int size;
+    float brightness;
 } Sprite;
 
 enum INTERPOLATION_METHOD {

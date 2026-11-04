@@ -105,4 +105,6 @@ void onWorldGen(World* world) {
     edgeArrayPushBack(&colliders, edge4);
 
     world->walls = colliders;
+
+    world->player.sprite.brightness = 10;
 }
