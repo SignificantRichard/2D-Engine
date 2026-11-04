@@ -83,7 +83,6 @@ void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
 void drawSpriteFromBody(SDL_Surface* surface, int x, int y, RenderedBody* renderedBody) {
     Sprite sprite = renderedBody->sprite;
     int stopAt = sprite.height * renderedBody->renderPercentage;
-    printf("%d\n", stopAt);
     for (int i = 0; i < sprite.size; i++) {
         int localX = i % sprite.width;
         int localY = i / sprite.width;

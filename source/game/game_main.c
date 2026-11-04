@@ -71,7 +71,7 @@ float clamp(float value, float min, float max) {
 }
 
 void sight(World* world) {
-    int range = 500;
+    int range = 250;
     RaycastHit rays[RAY_AMOUNT];
 
     // Spread rays evenly across the field of view (FOV) centered on 'rotation'
@@ -199,7 +199,7 @@ void onWorldGen(World* world) {
     Wall wall7 = createWall();
     Wall wall8 = createWall();
     Edge edge5 = { .a = Vector_new(200, 200), .b = Vector_new(1800, 200), .wall=wall5}; // Top wall
-    Edge edge6 = { .a = Vector_new(1800, 50), .b = Vector_new(1800, 1800), .wall=wall6}; // Right wall
+    Edge edge6 = { .a = Vector_new(1800, 200), .b = Vector_new(1800, 1800), .wall=wall6}; // Right wall
     Edge edge7 = { .a = Vector_new(1800, 1800), .b = Vector_new(200, 1800), .wall=wall7}; // Bottom wall
     Edge edge8 = { .a = Vector_new(200, 1800), .b = Vector_new(200, 200), .wall=wall8}; // Left wall
 
