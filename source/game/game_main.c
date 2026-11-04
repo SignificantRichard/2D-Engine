@@ -64,24 +64,34 @@ void playerMove(World* world) {
 void sight(World* world) {
     int range = 250;
     RaycastHit rays[RAY_AMOUNT];
-    float fov = FOV;
 
-    float step = FOV / RAY_AMOUNT * 2;
+    // Spread rays evenly across the field of view (FOV) centered on 'rotation'
+    float startAngle = rotation - (FOV / 2.0f);
+    float step = FOV / (float)RAY_AMOUNT;
 
-    Vect facing = Vector_new(cosf(rotation + fov) * range, sinf(rotation + fov) * range);
-
-    // blast a stupid amount of rays to check for walls
     for (int i = 0; i < RAY_AMOUNT; i++) {
+        float rayAngle = startAngle + (i * step);
+
+        // Recalculate facing direction vector for EACH ray
+        Vect facing = Vector_new(cosf(rayAngle) * range, sinf(rayAngle) * range);
+
+        float minDistance = 1e9f; // Track closest intersection
+        int hitAny = 0;
+
         for (int j = 0; j < world->walls.size; j++) {
             Edge wall = world->walls.data[j];
             RaycastHit ray = raycast(world->player.body.position, facing, wall);
-            if (ray.hit) {
 
+            if (ray.hit && ray.distance < minDistance) {
+                minDistance = ray.distance;
+                hitAny = 1;
             }
         }
-        fov -= step;
+
+        if (hitAny) {
+            wallSprites[i].body.position.y = minDistance;
+        }
     }
-    
 }
 
 void onRender(World* world) {
@@ -161,9 +171,13 @@ void onWorldGen(World* world) {
     edgeArrayPushBack(&colliders, edge4);
 
     wallSprites = malloc(RAY_AMOUNT * sizeof(RenderedBody));
+
+    // size of one sprite
+    int spSz = INTERNAL_WIDTH / 30;
     for (int i = 0; i < RAY_AMOUNT; i++) {
         wallSprites[i] = createRenderedBody("./source/res/images/default");
-        wallSprites[i].body.position.x = i * 16;
+        wallSprites[i].sprite = resample(wallSprites[i].sprite, spSz, 16, 0);
+        wallSprites[i].body.position.x = i * spSz;
         renderQueuePushBack(&renderQueue, &wallSprites[i]);
     }
 
