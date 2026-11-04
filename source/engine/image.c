@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
 #include "image.h"
 #include "files.h"
 
@@ -97,60 +98,153 @@ Sprite loadImageAsSprite(char* path) {
     return sprite;
 }
 
+static inline int clamp(int val, int min, int max) {
+    if (val < min) return min;
+    if (val > max) return max;
+    return val;
+}
+
+static inline uint8_t clampColor(float val) {
+    if (val < 0.0f) return 0;
+    if (val > 255.0f) return 255;
+    return (uint8_t)val;
+}
+
+static float cubicWeight(float x) {
+    x = fabsf(x);
+    if (x <= 1.0f) {
+        return 1.5f * x * x * x - 2.5f * x * x + 1.0f;
+    } else if (x < 2.0f) {
+        return -0.5f * x * x * x + 2.5f * x * x - 4.0f * x + 2.0f;
+    }
+    return 0.0f;
+}
+
 Sprite resample(Sprite original, int w, int h, int method) {
     Sprite new = constructSprite(w, h);
+    
+    // Scaling ratios from destination grid to source grid
+    float scaleX = (float)original.width / w;
+    float scaleY = (float)original.height / h;
+
     switch (method) {
-        case NEAREST_NEIGHBOR:
+        case NEAREST_NEIGHBOR: {
             for (int y = 0; y < h; y++) {
+                int srcY = clamp((int)(y * scaleY), 0, original.height - 1);
                 for (int x = 0; x < w; x++) {
-                    int originalX = (x * h + y) % (original.width * original.height);
-                    uint32_t color = getPixel(&original, originalX / original.height, originalX % original.height);
-                    setPixel(&new, x, y, color);
+                    int srcX = clamp((int)(x * scaleX), 0, original.width - 1);
+                    setPixel(&new, x, y, getPixel(&original, srcX, srcY));
                 }
             }
             break;
-        case BILINEAR:
+        }
+
+        case BILINEAR: {
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
-                    uint32_t color;
-                    for (int y1 = 0; y1 <= 1; y++) {
-                        for (int x1 = 0; x1 < 1; x++) {
-                            int originalX = (x * h + y) % (original.width * original.height);
-                            uint32_t compColor = getPixel(&original, originalX / original.height, originalX % original.height);
-                            int r = ((compColor >> 24) & 0xff) / 4;
-                            int g = ((compColor >> 16) & 0xff) / 4;
-                            int b = ((compColor >> 8) & 0xff) / 4;
-                            int a = (compColor & 0xff) / 4;
-                            color += (r << 24) + (g << 16) + (b << 8) + a;
+                    float u = x * scaleX;
+                    float v = y * scaleY;
+
+                    int x0 = (int)floorf(u);
+                    int y0 = (int)floorf(v);
+                    int x1 = x0 + 1;
+                    int y1 = y0 + 1;
+
+                    float fx = u - x0;
+                    float fy = v - y0;
+
+                    // Clamp sample coordinates within boundary
+                    x0 = clamp(x0, 0, original.width - 1);
+                    x1 = clamp(x1, 0, original.width - 1);
+                    y0 = clamp(y0, 0, original.height - 1);
+                    y1 = clamp(y1, 0, original.height - 1);
+
+                    // Fetch 2x2 neighborhood
+                    uint32_t c00 = getPixel(&original, x0, y0);
+                    uint32_t c10 = getPixel(&original, x1, y0);
+                    uint32_t c01 = getPixel(&original, x0, y1);
+                    uint32_t c11 = getPixel(&original, x1, y1);
+
+                    // Interpolate each RGBA channel separately (using getColorFragment(color, place))
+                    // place index mapping based on your utility: 3 = red, 2 = green, 1 = blue, 0 = alpha
+                    float r = (1 - fx) * (1 - fy) * getColorFragment(c00, 3) +
+                              fx * (1 - fy)       * getColorFragment(c10, 3) +
+                              (1 - fx) * fy       * getColorFragment(c01, 3) +
+                              fx * fy             * getColorFragment(c11, 3);
+
+                    float g = (1 - fx) * (1 - fy) * getColorFragment(c00, 2) +
+                              fx * (1 - fy)       * getColorFragment(c10, 2) +
+                              (1 - fx) * fy       * getColorFragment(c01, 2) +
+                              fx * fy             * getColorFragment(c11, 2);
+
+                    float b = (1 - fx) * (1 - fy) * getColorFragment(c00, 1) +
+                              fx * (1 - fy)       * getColorFragment(c10, 1) +
+                              (1 - fx) * fy       * getColorFragment(c01, 1) +
+                              fx * fy             * getColorFragment(c11, 1);
+
+                    float a = (1 - fx) * (1 - fy) * getColorFragment(c00, 0) +
+                              fx * (1 - fy)       * getColorFragment(c10, 0) +
+                              (1 - fx) * fy       * getColorFragment(c01, 0) +
+                              fx * fy             * getColorFragment(c11, 0);
+
+                    setPixel(&new, x, y, makeColor(clampColor(r), clampColor(g), clampColor(b), clampColor(a)));
+                }
+            }
+            break;
+        }
+
+        case BICUBIC: {
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    float u = x * scaleX;
+                    float v = y * scaleY;
+
+                    int srcX = (int)floorf(u);
+                    int srcY = (int)floorf(v);
+
+                    float fx = u - srcX;
+                    float fy = v - srcY;
+
+                    float rSum = 0.0f, gSum = 0.0f, bSum = 0.0f, aSum = 0.0f;
+                    float totalWeight = 0.0f;
+
+                    // 4x4 grid interpolation loop (-1 to +2)
+                    for (int m = -1; m <= 2; m++) {
+                        float wy = cubicWeight(m - fy);
+                        int py = clamp(srcY + m, 0, original.height - 1);
+
+                        for (int n = -1; n <= 2; n++) {
+                            float wx = cubicWeight(n - fx);
+                            int px = clamp(srcX + n, 0, original.width - 1);
+
+                            float weight = wx * wy;
+                            uint32_t sample = getPixel(&original, px, py);
+
+                            rSum += getColorFragment(sample, 3) * weight;
+                            gSum += getColorFragment(sample, 2) * weight;
+                            bSum += getColorFragment(sample, 1) * weight;
+                            aSum += getColorFragment(sample, 0) * weight;
+                            totalWeight += weight;
                         }
                     }
-                   setPixel(&new, x, y, color);
-                }
-            }
-            break;
-        case BICUBIC:
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    uint32_t color;
-                    for (int y1 = -1; y1 <= 1; y++) {
-                        for (int x1 = -1; x1 < 1; x++) {
-                            int originalX = (x * h + y) % (original.width * original.height);
-                            uint32_t compColor = getPixel(&original, originalX / original.height, originalX % original.height);
-                            int r = ((compColor >> 24) & 0xff) / 9;
-                            int g = ((compColor >> 16) & 0xff) / 9;
-                            int b = ((compColor >> 8) & 0xff) / 9;
-                            int a = (compColor & 0xff) / 9;
-                            color += (r << 24) + (g << 16) + (b << 8) + a;
-                        }
+
+                    // Normalize weights to maintain proper brightness/luminance
+                    if (totalWeight > 0.0f) {
+                        rSum /= totalWeight;
+                        gSum /= totalWeight;
+                        bSum /= totalWeight;
+                        aSum /= totalWeight;
                     }
-                   setPixel(&new, x, y, color);
+
+                    setPixel(&new, x, y, makeColor(clampColor(rSum), clampColor(gSum), clampColor(bSum), clampColor(aSum)));
                 }
             }
             break;
+        }
+
         default:
-            printf("Invalid resample method used");
+            printf("Invalid resample method used\n");
             break;
-        
     }
 
     return new;
