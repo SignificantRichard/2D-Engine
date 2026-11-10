@@ -11,6 +11,7 @@
 #include "../engine/sound.h"
 #include "../engine/raycast.h"
 #include "../engine/collision.h"
+#include "../engine/polygon.h"
 
 // game specific stuff
 #include "wall.h"
@@ -29,7 +30,8 @@
 // envar
 #define rotationSpeed 0.1f
 #define RAY_AMOUNT 320
-#define FOV PI
+#define FOV 1.22f
+#define RANGE 1000
 
 static RenderQueue renderQueue;
 static RenderQueue hudQueue;
@@ -39,8 +41,6 @@ static float walkDirection = 0.0f;
 static float rotation = 0.0f;
 
 static HUDInfo hud;
-
-static RenderedBody* wallSprites;
 
 void onTick(World* world) {
 
@@ -75,25 +75,28 @@ float clamp(float value, float min, float max) {
     return value;
 }
 
-void sight(World* world) {
-    int range = 250;
-    RaycastHit rays[RAY_AMOUNT];
+PolygonArray sight(World* world) {
+
+    PolygonArray polyArray = createPolygonArray(RAY_AMOUNT);
 
     // Spread rays evenly across the field of view (FOV) centered on 'rotation'
     float startAngle = rotation - (FOV / 2.0f);
     float step = FOV / (float)RAY_AMOUNT;
 
+    int lastIndex = -1;
+
     for (int i = 0; i < RAY_AMOUNT; i++) {
         float rayAngle = startAngle + (i * step);
 
         // Recalculate facing direction vector for EACH ray
-        Vect facing = Vector_new(cosf(rayAngle) * range, sinf(rayAngle) * range);
+        Vect facing = Vector_new(cosf(rayAngle) * RANGE, sinf(rayAngle) * RANGE);
 
         float minDistance = 1e9f; // Track closest intersection
         int hitAny = 0;
 
         RaycastHit outputRay;
 
+        int currentIndex = 0;
         for (int j = 0; j < world->walls.size; j++) {
             Edge wall = world->walls.data[j];
             RaycastHit ray = raycast(world->player.body.position, facing, wall);
@@ -102,30 +105,39 @@ void sight(World* world) {
                 minDistance = ray.distance;
                 hitAny = 1;
                 outputRay = ray;
+                currentIndex = j;
             }
         }
 
         if (hitAny) {
-            int voffset = INTERNAL_HEIGHT / 6 + minDistance / 3;
-            wallSprites[i].body.position.y = voffset;
-            wallSprites[i].renderPercentage = ((float)INTERNAL_HEIGHT - voffset * 2) / INTERNAL_HEIGHT;
-            // wallSprites[i].sprite = resample(
-            //     wallSprites[i].sprite,
-            //     INTERNAL_WIDTH / 30,
-            //     INTERNAL_HEIGHT - voffset * 2,
-            //     3
-            // );
-            wallSprites[i].sprite.brightness = 1 - clamp(outputRay.distance / range, 0.0f, 0.7f);
-        } else {
-            // no hit, no render
-            wallSprites[i].renderPercentage = 0;
+
+            float correctedDistance = outputRay.distance * cosf(rayAngle - rotation);
+            float wallHeight = (1.25f - correctedDistance / RANGE) * INTERNAL_HEIGHT / 2;
+
+            if (lastIndex != currentIndex) {
+                Polygon p;
+                p.a = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
+                p.b = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                p.c = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
+                p.d = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                polyArray.data[polyArray.used] = p;
+                
+                polyArray.used++;
+            } else {
+                polyArray.data[polyArray.used - 1].c = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
+                polyArray.data[polyArray.used - 1].d = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+            }
+
         }
+
+        lastIndex = currentIndex;
     }
+    return polyArray;
 }
 
-void onRender(World* world) {
+PolygonArray onRender(World* world) {
     playerMove(world);
-    sight(world);
+    return sight(world);
 }
 
 int onEvent(SDL_Event* event, World* world) {
@@ -191,8 +203,8 @@ void onWorldGen(World* world) {
     hudBackground->body.position.y = 0;
     hudBackground->sprite = resample(hudBackground->sprite, INTERNAL_WIDTH, 100, 3);
     
-    renderQueuePushBack(&hudQueue, hudBackground);
-    renderQueuePushBack(&hudQueue, &hud.portrait.portraits);
+    // renderQueuePushBack(&hudQueue, hudBackground);
+    // renderQueuePushBack(&hudQueue, &hud.portrait.portraits);
     
     EdgeArray colliders;
     colliders = createEdgeArray(0);
@@ -211,37 +223,6 @@ void onWorldGen(World* world) {
     edgeArrayPushBack(&colliders, edge2);
     edgeArrayPushBack(&colliders, edge3);
     edgeArrayPushBack(&colliders, edge4);
-
-
-    Wall wall5 = createWall();
-    Wall wall6 = createWall();
-    Wall wall7 = createWall();
-    Wall wall8 = createWall();
-    Edge edge5 = { .a = Vector_new(200, 200), .b = Vector_new(1800, 200), .wall=wall5}; // Top wall
-    Edge edge6 = { .a = Vector_new(1800, 200), .b = Vector_new(1800, 1800), .wall=wall6}; // Right wall
-    Edge edge7 = { .a = Vector_new(1800, 1800), .b = Vector_new(200, 1800), .wall=wall7}; // Bottom wall
-    Edge edge8 = { .a = Vector_new(200, 1800), .b = Vector_new(200, 200), .wall=wall8}; // Left wall
-
-    edgeArrayPushBack(&colliders, edge5);
-    edgeArrayPushBack(&colliders, edge6);
-    edgeArrayPushBack(&colliders, edge7);
-    edgeArrayPushBack(&colliders, edge8);
-
-    wallSprites = malloc(RAY_AMOUNT * sizeof(RenderedBody));
-
-    // size of one sprite
-    int spSz = INTERNAL_WIDTH / RAY_AMOUNT;
-    for (int i = 0; i < RAY_AMOUNT; i++) {
-        wallSprites[i] = createRenderedBody("./source/res/images/default");
-        wallSprites[i].body.position.x = i * spSz;
-        wallSprites[i].sprite = resample(
-            wallSprites[i].sprite,
-            INTERNAL_WIDTH / RAY_AMOUNT,
-            INTERNAL_HEIGHT,
-            0
-        );
-        renderQueuePushBack(&renderQueue, &wallSprites[i]);
-    }
 
     world->walls = colliders;
 

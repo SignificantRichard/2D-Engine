@@ -12,15 +12,17 @@
 #include "../engine/files.h"
 #include "../engine/sound.h"
 #include "../engine/renderqueue.h"
+#include "../engine/polygon.h"
 
 #include "wall.h"
 
 #include <SDL3/SDL.h>
 
 void onTick(World* world);
-void onRender(World* world);
+PolygonArray onRender(World* world);
 int onEvent(SDL_Event* event, World* world);
 void onWorldGen(World* world);
+PolygonArray sight(World* world);
 RenderQueue** passRenderQueue();
 
 #endif
