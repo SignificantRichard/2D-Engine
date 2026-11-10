@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "renderqueue.h"
+#include "polygon.h"
 #include "../game/game_main.h"
 
 static inline uint8_t clampColor(float val) {
@@ -233,8 +234,17 @@ int Work() {
         // Call exposed game stuff
         if (onEvent(&event, &world))
             break;
-        onRender(&world);
-        
+        PolygonArray polyArray = onRender(&world);
+
+        for (int i = 0; i < polyArray.used; i++) {
+            drawLine(surface, polyArray.data[i].a.x, polyArray.data[i].a.y, polyArray.data[i].b.x, polyArray.data[i].b.y, 255, 255, 255, 255);
+            drawLine(surface, polyArray.data[i].d.x, polyArray.data[i].d.y, polyArray.data[i].c.x, polyArray.data[i].c.y, 255, 255, 255, 255);
+            drawLine(surface, polyArray.data[i].a.x, polyArray.data[i].a.y, polyArray.data[i].c.x, polyArray.data[i].c.y, 255, 255, 255, 255);
+            drawLine(surface, polyArray.data[i].d.x, polyArray.data[i].d.y, polyArray.data[i].b.x, polyArray.data[i].b.y, 255, 255, 255, 255);
+            drawLine(surface, polyArray.data[i].a.x, polyArray.data[i].a.y, polyArray.data[i].d.x, polyArray.data[i].d.y, 255, 255, 255, 255);
+            drawLine(surface, polyArray.data[i].c.x, polyArray.data[i].c.y, polyArray.data[i].b.x, polyArray.data[i].b.y, 255, 255, 255, 255);
+        }
+
         RenderQueue** renderQueues = passRenderQueue();
         RenderQueue* renderQueue = renderQueues[0];
 
