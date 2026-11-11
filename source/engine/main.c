@@ -223,15 +223,15 @@ int Work() {
         if (++frameCount % TICK_RATE == 0)
             tickHit(&world, frameCount);
         
-        PolygonArray polyArray = onRender(&world);
+        PolygonArray polyArray = onRender(&world, elapsed_time);
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
+        // SDL_RenderClear(renderer);
 
         for (int i = 0; i < polyArray.used; i++) {
             Polygon poly = polyArray.data[i];
-            Sprite sprite = loadImageAsSprite(poly.texture); // Consider caching this texture pointer in your asset manager!
-
+            Sprite sprite = loadImageAsSprite(poly.texture);
+            
             if (sprite.data != NULL) {
                 // Create a temporary surface to upload raw sprite pixels to an SDL_Texture on the GPU
                 SDL_Surface* temp_surf = SDL_CreateSurfaceFrom(
@@ -342,7 +342,7 @@ int Work() {
                 }
             }
         }
-free(renderQueues);
+        free(renderQueues);
 
         SDL_RenderPresent(renderer);
 

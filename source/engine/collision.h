@@ -4,6 +4,6 @@
 #include "world.h"
 #include "body.h"
 
-void moveAndSlide(RenderedBody* renderedBody, World* world);
+void moveAndSlide(RenderedBody* renderedBody, World* world, float dt);
 
 #endif

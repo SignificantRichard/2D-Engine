@@ -6,7 +6,7 @@
 #include "world.h"
 #include <math.h>
 
-void moveAndSlide(RenderedBody* renderedBody, World* world) {
+void moveAndSlide(RenderedBody* renderedBody, World* world, float dt) {
     Body* body = &renderedBody->body;
     
     if (body->moveDirection.x == 0.0f) {
@@ -25,8 +25,8 @@ void moveAndSlide(RenderedBody* renderedBody, World* world) {
     float speedSq = body->velocity.x * body->velocity.x + body->velocity.y * body->velocity.y;
     if (speedSq > maxSpeedF * maxSpeedF) {
         float speed = sqrtf(speedSq);
-        body->velocity.x = (body->velocity.x / speed) * maxSpeedF;
-        body->velocity.y = (body->velocity.y / speed) * maxSpeedF;
+        body->velocity.x = (body->velocity.x / speed) * maxSpeedF * dt;
+        body->velocity.y = (body->velocity.y / speed) * maxSpeedF * dt;
     }
     
     Vect displacement = body->velocity;

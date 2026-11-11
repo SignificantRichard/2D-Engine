@@ -28,7 +28,7 @@
 #include <SDL3/SDL.h>
 
 // envar
-#define rotationSpeed 0.1f
+#define rotationSpeed 6.0f
 #define RAY_AMOUNT 1280
 #define FOV 1.22f
 #define RANGE 1500
@@ -52,10 +52,10 @@ void onTick(World* world, uint32_t tick) {
     }
 }
 
-void playerMove(World* world) {
+void playerMove(World* world, float dt) {
     RenderedBody* plr = &world->player;
 
-    rotation += rotationDirection;
+    rotation += rotationDirection * dt;
 
     while (rotation < 0) {
         rotation += TPI;
@@ -69,7 +69,7 @@ void playerMove(World* world) {
 
     plr->body.moveDirection = Vector_new(x, y);
 
-    moveAndSlide(plr, world);
+    moveAndSlide(plr, world, dt);
 }
 
 float clamp(float value, float min, float max) {
@@ -91,6 +91,19 @@ PolygonArray sight(World* world) {
 
     int lastIndex = -1;
     int prevChangeWall = 0;
+
+    // create a floor polygon
+    Polygon floor;
+    floor.a = Vector_new(0, INTERNAL_HEIGHT / 2);
+    floor.b = Vector_new(INTERNAL_WIDTH, INTERNAL_HEIGHT / 2);
+    floor.c = Vector_new(0, INTERNAL_HEIGHT);
+    floor.d = Vector_new(INTERNAL_WIDTH, INTERNAL_HEIGHT);
+    floor.aSideBrightness = 0.0f;
+    floor.cSideBrightness = 1.5f;
+    floor.texture = "./source/res/images/alternate";
+    polyArray.data[polyArray.used] = floor;
+    polyArray.used++;
+                
 
     for (int i = 0; i < RAY_AMOUNT; i++) {
         float rayAngle = startAngle + (i * step);
@@ -136,7 +149,7 @@ PolygonArray sight(World* world) {
                 polyArray.used++;
                 prevChangeWall = 1;
             } else {
-                if (polyArray.used - 2 > 0 && prevChangeWall) {
+                if (polyArray.used - 2 > 1 && prevChangeWall) {
                     polyArray.data[polyArray.used - 2].c = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
                     polyArray.data[polyArray.used - 2].d = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
                 }
@@ -153,8 +166,8 @@ PolygonArray sight(World* world) {
     return polyArray;
 }
 
-PolygonArray onRender(World* world) {
-    playerMove(world);
+PolygonArray onRender(World* world, float dt) {
+    playerMove(world, dt);
     return sight(world);
 }
 
