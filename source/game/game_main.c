@@ -29,9 +29,9 @@
 
 // envar
 #define rotationSpeed 0.1f
-#define RAY_AMOUNT 320
+#define RAY_AMOUNT 1280
 #define FOV 1.22f
-#define RANGE 1000
+#define RANGE 1500
 
 static RenderQueue renderQueue;
 static RenderQueue hudQueue;
@@ -84,6 +84,7 @@ PolygonArray sight(World* world) {
     float step = FOV / (float)RAY_AMOUNT;
 
     int lastIndex = -1;
+    int prevChangeWall = 0;
 
     for (int i = 0; i < RAY_AMOUNT; i++) {
         float rayAngle = startAngle + (i * step);
@@ -110,9 +111,11 @@ PolygonArray sight(World* world) {
         }
 
         if (hitAny) {
-
             float correctedDistance = outputRay.distance * cosf(rayAngle - rotation);
             float wallHeight = (1.25f - correctedDistance / RANGE) * INTERNAL_HEIGHT / 2;
+            float brightness = 1.0f - correctedDistance / RANGE;
+            if (brightness < 0.0f) brightness = 0.0f;
+            if (brightness > 1.0f) brightness = 1.0f;
 
             if (lastIndex != currentIndex) {
                 Polygon p;
@@ -120,12 +123,21 @@ PolygonArray sight(World* world) {
                 p.b = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
                 p.c = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
                 p.d = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                p.aSideBrightness = brightness;
+                p.cSideBrightness = brightness;
+                p.texture = "./source/res/images/default";
                 polyArray.data[polyArray.used] = p;
-                
                 polyArray.used++;
+                prevChangeWall = 1;
             } else {
+                if (polyArray.used - 2 > 0 && prevChangeWall) {
+                    polyArray.data[polyArray.used - 2].c = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
+                    polyArray.data[polyArray.used - 2].d = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                }
                 polyArray.data[polyArray.used - 1].c = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
                 polyArray.data[polyArray.used - 1].d = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                polyArray.data[polyArray.used - 1].cSideBrightness = brightness;
+                prevChangeWall = 0;
             }
 
         }
