@@ -20,6 +20,8 @@ Portrait createPortrait() {
         .instance = 0
     };
     portrait.portraits = createRenderedBody("./source/res/images/face");
+    portrait.portraits.body.position.x = INTERNAL_WIDTH / 2 - 32;
+    portrait.portraits.body.position.y = INTERNAL_HEIGHT - 64;
     return portrait;
 }
 
@@ -28,7 +30,7 @@ HUDInfo createHUD() {
         .ammo = createAmmunition(),
         .portrait = createPortrait()
     };
-    hud.portrait.portraits.sprite = resample(hud.portrait.portraits.sprite, 100, 300, 0);
+    hud.portrait.portraits.sprite = resample(hud.portrait.portraits.sprite, 64, 192, 0);
     changePortrait(&hud, 1);
     return hud;
 }

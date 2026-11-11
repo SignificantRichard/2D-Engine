@@ -110,8 +110,6 @@ Sprite loadImageAsSprite(char* path) {
     // Read alpha flag (0 means alpha is enabled in your encoder script)
     uint8_t alphaEnabled = imageData.content[idx++];
 
-    printf("alpha enabled? %d\n", alphaEnabled);
-
     Sprite sprite = constructSprite(width, height);
 
     // Each palette entry is 4 bytes (RGBA) if alpha is enabled, or 3 bytes (RGB) if disabled

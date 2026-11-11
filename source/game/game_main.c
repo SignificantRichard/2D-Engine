@@ -42,8 +42,14 @@ static float rotation = 0.0f;
 
 static HUDInfo hud;
 
-void onTick(World* world) {
-
+void onTick(World* world, uint32_t tick) {
+    if (tick % 10 == 0) {
+        hud.portrait.instance++;
+        hud.portrait.portraits.body.position.y = -(float)(hud.portrait.instance) / 3.0f * 64 + INTERNAL_HEIGHT - 128;
+        hud.portrait.portraits.renderPercentageStart = (float)hud.portrait.instance / 3.0f;
+        hud.portrait.portraits.renderPercentage = ((float)hud.portrait.instance + 1.0f) / 3.0f;
+        if (hud.portrait.instance == 3) hud.portrait.instance = 0;
+    }
 }
 
 void playerMove(World* world) {
@@ -212,11 +218,11 @@ void onWorldGen(World* world) {
     RenderedBody* hudBackground = malloc(sizeof(RenderedBody));
     *hudBackground = createRenderedBody("./source/res/images/hud");
     hudBackground->body.position.x = 0;
-    hudBackground->body.position.y = 0;
+    hudBackground->body.position.y = INTERNAL_HEIGHT - 64;
     hudBackground->sprite = resample(hudBackground->sprite, INTERNAL_WIDTH, 100, 3);
     
-    // renderQueuePushBack(&hudQueue, hudBackground);
-    // renderQueuePushBack(&hudQueue, &hud.portrait.portraits);
+    renderQueuePushBack(&hudQueue, hudBackground);
+    renderQueuePushBack(&hudQueue, &hud.portrait.portraits);
     
     EdgeArray colliders;
     colliders = createEdgeArray(0);

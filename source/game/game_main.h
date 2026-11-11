@@ -18,7 +18,7 @@
 
 #include <SDL3/SDL.h>
 
-void onTick(World* world);
+void onTick(World* world, uint32_t tick);
 PolygonArray onRender(World* world);
 int onEvent(SDL_Event* event, World* world);
 void onWorldGen(World* world);

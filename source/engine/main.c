@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h>
 #include "renderqueue.h"
 #include "polygon.h"
 #include "image.h"
@@ -181,8 +182,8 @@ void drawLine(SDL_Surface* surface, int x0, int y0, int x1, int y1, int r, int g
 }
 
 // Do game checks here
-void tickHit(World* world) {
-    onTick(world);
+void tickHit(World* world, uint32_t tick) {
+    onTick(world, tick);
 }
 
 int Work() {
@@ -227,14 +228,21 @@ int Work() {
     // Call exposed game stuff
     onWorldGen(&world);
 
-    while (1) {
-        Uint64 frameStart = SDL_GetTicks(); // will last ~1x10^10 years at 60 fps. Cpu would be atomized before then
+    struct timespec start, end;
+    double elapsed_time;
+    double fps;
 
+    while (1) {
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        Uint64 frameStart = SDL_GetTicks();
+        
         SDL_Event event;
 
         // Call exposed game stuff
         if (onEvent(&event, &world))
             break;
+        if (++frameCount % TICK_RATE == 0)
+            tickHit(&world, frameCount);
         
        PolygonArray polyArray = onRender(&world);
 
@@ -344,6 +352,8 @@ int Work() {
             drawLine(surface, poly.d.x, poly.d.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
             drawLine(surface, poly.a.x, poly.a.y, poly.d.x, poly.d.y, 255, 255, 255, 255);
             drawLine(surface, poly.c.x, poly.c.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
+
+            
         }
 
         RenderQueue** renderQueues = passRenderQueue();
@@ -361,12 +371,6 @@ int Work() {
 
         free(renderQueues);
 
-        // render collisions (walls)
-        // for (int i = 0; i < world.walls.size; i++) {
-        //     Edge edge = world.walls.data[i];
-        //     drawLine(surface, (int)edge.a.x, (int)edge.a.y, (int)edge.b.x, (int)edge.b.y, 255, 0, 255, 255);
-        // }
-
         // Upload surface pixel data to GPU texture
         SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
 
@@ -383,6 +387,18 @@ int Work() {
         Uint64 frameTime = SDL_GetTicks() - frameStart;
         if (frameTime < frameDelay) {
             SDL_Delay(frameDelay - (Uint32)frameTime);
+        }
+        clock_gettime(CLOCK_MONOTONIC, &end);
+
+        // Calculate elapsed time in seconds
+        elapsed_time = (end.tv_sec - start.tv_sec) + 
+                       (end.tv_nsec - start.tv_nsec) / 1e9;
+
+        // Prevent division by zero
+        if (elapsed_time > 0.0) {
+            fps = 1.0 / elapsed_time;
+            printf("FPS: %.2f\r", fps);
+            fflush(stdout);
         }
 
         // clear all
