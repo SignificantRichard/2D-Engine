@@ -139,9 +139,9 @@ PolygonArray sight(World* world) {
             if (lastIndex != currentIndex) {
                 Polygon p;
                 p.a = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
-                p.b = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                p.b = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH + 2, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
                 p.c = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
-                p.d = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                p.d = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH + 2, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
                 p.aSideBrightness = brightness;
                 p.cSideBrightness = brightness;
                 p.texture = "./source/res/images/default";

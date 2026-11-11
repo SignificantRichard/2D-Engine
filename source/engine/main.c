@@ -32,155 +32,6 @@ World initEngine() {
     return world;
 }
 
-int ModifyPixel(SDL_Surface* surface, Uint32 x, Uint32 y, int r, int g, int b, int a) {
-    if (x < 0 || y < 0 || x > INTERNAL_WIDTH || y > INTERNAL_HEIGHT) {
-        return 1;
-    }
-
-    // Lock surface for direct pixel access
-    if (SDL_MUSTLOCK(surface)) {
-        if (!SDL_LockSurface(surface)) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock surface: %s", SDL_GetError());
-            return 1;
-        }
-    }
-
-    // Cast raw void* pixel buffer to 32-bit unsigned integer pointer (for RGBA8888)
-    Uint32* pixels = (Uint32*)surface->pixels;
-    int width = surface->w;
-    int height = surface->h;
-    
-    // Pitch is in bytes. Divide by sizeof(Uint32) to get pitch in 32-bit pixels
-    int pitchInPixels = surface->pitch / sizeof(Uint32);
-
-    // Map standard R, G, B, A to the pixel format of this surface
-    Uint32 color = SDL_MapRGBA(SDL_GetPixelFormatDetails(surface->format), NULL, r, g, b, a);
-
-    // Write pixel using row-pitch offset
-    pixels[y * pitchInPixels + x] = color;
-
-    // Unlock surface when finished
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_UnlockSurface(surface);
-    }
-    return 0;
-}
-
-int GrabPixel(SDL_Surface* surface, Uint32 x, Uint32 y) {
-    if (x < 0 || y < 0 || x > INTERNAL_WIDTH || y > INTERNAL_HEIGHT) {
-        return 1;
-    }
-
-    // Lock surface for direct pixel access
-    if (SDL_MUSTLOCK(surface)) {
-        if (!SDL_LockSurface(surface)) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock surface: %s", SDL_GetError());
-            return 1;
-        }
-    }
-
-    // Cast raw void* pixel buffer to 32-bit unsigned integer pointer (for RGBA8888)
-    Uint32* pixels = (Uint32*)surface->pixels;
-    int width = surface->w;
-    int height = surface->h;
-    
-    // Pitch is in bytes. Divide by sizeof(Uint32) to get pitch in 32-bit pixels
-    int pitchInPixels = surface->pitch / sizeof(Uint32);
-
-    // Map standard R, G, B, A to the pixel format of this surface
-    Uint32 color = pixels[y * pitchInPixels + x];
-
-    // Unlock surface when finished
-    if (SDL_MUSTLOCK(surface)) {
-        SDL_UnlockSurface(surface);
-    }
-    return color;
-}
-
-void ModifyPixels(SDL_Surface* surface, int x, int y, int w, int h, int r, int g, int b, int a) {
-    for (int i = x; i < w+x; i++) {
-        for (int j = y; j < h+y; j++) {
-            ModifyPixel(surface, i, j, r, g, b, a);
-        }
-    }
-}
-
-void drawSprite(SDL_Surface* surface, int x, int y, Sprite* sprite) {
-    for (int i = 0; i < sprite->size; i++) {
-        int localX = i % sprite->width;
-        int localY = i / sprite->width;
-        
-        uint32_t color = getRenderPixel(sprite, i, 0); // same as x, y
-        int r = getColorFragment(color, 3);
-        int g = getColorFragment(color, 2);
-        int b = getColorFragment(color, 1);
-        int a = getColorFragment(color, 0);
-
-        ModifyPixel(surface, x + localX, y + localY, r, g, b, a);
-    }
-}
-
-void drawSpriteFromBody(SDL_Surface* surface, int x, int y, RenderedBody* renderedBody) {
-    Sprite sprite = renderedBody->sprite;
-    int startAt = sprite.height * renderedBody->renderPercentageStart; 
-    int stopAt = sprite.height * renderedBody->renderPercentage;
-    for (int i = 0; i < sprite.size; i++) {
-
-        int localX = i % sprite.width;
-        int localY = i / sprite.width;
-
-        if (localY >= stopAt) {
-            break;
-        } else if (localY < startAt) {
-            continue;
-        }
-        
-        uint32_t color = getRenderPixel(&sprite, i, 0); // same as x, y
-        int r = getColorFragment(color, 3);
-        int g = getColorFragment(color, 2);
-        int b = getColorFragment(color, 1);
-        int a = getColorFragment(color, 0);
-
-        if (a == 0) {
-            continue;
-        } else if (a != 255) {
-            // time to blend
-            float perc = a / 255;
-            Uint32 baseColor = GrabPixel(surface, x + localX, y + localY);
-            int r = clampColor(getColorFragment(color, 3) * perc + getColorFragment(baseColor, 3) * (1.0f - perc));
-            int g = clampColor(getColorFragment(color, 2) * perc + getColorFragment(baseColor, 2) * (1.0f - perc));
-            int b = clampColor(getColorFragment(color, 1) * perc + getColorFragment(baseColor, 1) * (1.0f - perc));
-            int a = clampColor(getColorFragment(color, 0) * perc + getColorFragment(baseColor, 0) * (1.0f - perc));
-            color = makeColor(r, g, b, a);
-        }
-
-        ModifyPixel(surface, x + localX, y + localY, r, g, b, a);
-    }
-}
-
-void drawLine(SDL_Surface* surface, int x0, int y0, int x1, int y1, int r, int g, int b, int a) {
-    int dx = abs(x1 - x0);
-    int dy = abs(y1 - y0);
-    int sx = (x0 < x1) ? 1 : -1;
-    int sy = (y0 < y1) ? 1 : -1;
-    int err = dx - dy;
-
-    while (1) {
-        ModifyPixel(surface, x0, y0, r, g, b, a);
-
-        if (x0 == x1 && y0 == y1) break;
-        int e2 = 2 * err;
-        if (e2 > -dy) {
-            err -= dy;
-            x0 += sx;
-        }
-        if (e2 < dx) {
-            err += dx;
-            y0 += sy;
-        }
-    }
-}
-
 // Do game checks here
 void tickHit(World* world, uint32_t tick) {
     onTick(world, tick);
@@ -245,7 +96,7 @@ int Work() {
                 SDL_DestroySurface(temp_surf);
 
                 if (gpu_texture != NULL) {
-                    SDL_SetTextureScaleMode(gpu_texture, SDL_SCALEMODE_LINEAR);
+                    SDL_SetTextureScaleMode(gpu_texture, SDL_SCALEMODE_NEAREST);
 
                     SDL_Vertex verts[4];
 
@@ -285,13 +136,13 @@ int Work() {
             }
 
             // Optional: Hardware debug wireframe overlay lines
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.b.x, poly.b.y);
-            SDL_RenderLine(renderer, poly.d.x, poly.d.y, poly.c.x, poly.c.y);
-            SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.c.x, poly.c.y);
-            SDL_RenderLine(renderer, poly.d.x, poly.d.y, poly.b.x, poly.b.y);
-            SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.d.x, poly.d.y);
-            SDL_RenderLine(renderer, poly.c.x, poly.c.y, poly.b.x, poly.b.y);
+            // SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            // SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.b.x, poly.b.y);
+            // SDL_RenderLine(renderer, poly.d.x, poly.d.y, poly.c.x, poly.c.y);
+            // SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.c.x, poly.c.y);
+            // SDL_RenderLine(renderer, poly.d.x, poly.d.y, poly.b.x, poly.b.y);
+            // SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.d.x, poly.d.y);
+            // SDL_RenderLine(renderer, poly.c.x, poly.c.y, poly.b.x, poly.b.y);
         }
 
         RenderQueue** renderQueues = passRenderQueue();
