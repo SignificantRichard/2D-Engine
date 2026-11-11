@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h>
 #include "renderqueue.h"
 #include "polygon.h"
 #include "image.h"
@@ -181,12 +182,11 @@ void drawLine(SDL_Surface* surface, int x0, int y0, int x1, int y1, int r, int g
 }
 
 // Do game checks here
-void tickHit(World* world) {
-    onTick(world);
+void tickHit(World* world, uint32_t tick) {
+    onTick(world, tick);
 }
 
 int Work() {
-
     const Uint32 frameDelay = 1000 / FRAME_RATE;
     Uint32 frameCount = 0;
 
@@ -197,200 +197,171 @@ int Work() {
 
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
-    if (!SDL_CreateWindowAndRenderer("Pixel Manipulation Engine", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+    if (!SDL_CreateWindowAndRenderer("Engine", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window/renderer: %s", SDL_GetError());
         SDL_Quit();
         return 1;
     }
 
-    // buffer surface
-    SDL_Surface* surface = SDL_CreateSurface(INTERNAL_WIDTH, INTERNAL_HEIGHT, SDL_PIXELFORMAT_RGBA8888);
-    if (!surface) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create surface: %s", SDL_GetError());
-        return 1;
-    }
-
-    // Create a streaming GPU texture matching the surface dimensions
-    SDL_Texture* texture = SDL_CreateTexture(
-        renderer, 
-        surface->format, 
-        SDL_TEXTUREACCESS_STREAMING, 
-        surface->w, 
-        surface->h
-    );
-
-    // Define everything and everyone
+    SDL_SetRenderLogicalPresentation(renderer, INTERNAL_WIDTH, INTERNAL_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
     World world;
     world = initEngine();
-
-    // Call exposed game stuff
     onWorldGen(&world);
 
+    struct timespec start, end;
+    double elapsed_time;
+    double fps;
+
     while (1) {
-        Uint64 frameStart = SDL_GetTicks(); // will last ~1x10^10 years at 60 fps. Cpu would be atomized before then
-
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        Uint64 frameStart = SDL_GetTicks();
+        
         SDL_Event event;
-
-        // Call exposed game stuff
         if (onEvent(&event, &world))
             break;
+        if (++frameCount % TICK_RATE == 0)
+            tickHit(&world, frameCount);
         
-       PolygonArray polyArray = onRender(&world);
+        PolygonArray polyArray = onRender(&world);
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
 
         for (int i = 0; i < polyArray.used; i++) {
             Polygon poly = polyArray.data[i];
-            Sprite texture = loadImageAsSprite(poly.texture);
+            Sprite sprite = loadImageAsSprite(poly.texture); // Consider caching this texture pointer in your asset manager!
 
-            if (texture.data != NULL) { // I will cry if this breaks
-                int min_y = (int)fminf(fminf(poly.c.y, poly.d.y), fminf(poly.a.y, poly.b.y));
-                int max_y = (int)fmaxf(fmaxf(poly.c.y, poly.d.y), fmaxf(poly.a.y, poly.b.y));
+            if (sprite.data != NULL) {
+                // Create a temporary surface to upload raw sprite pixels to an SDL_Texture on the GPU
+                SDL_Surface* temp_surf = SDL_CreateSurfaceFrom(
+                    sprite.width, sprite.height, 
+                    SDL_PIXELFORMAT_RGBA8888, 
+                    sprite.data, 
+                    sprite.width * sizeof(uint32_t)
+                );
+                
+                SDL_Texture* gpu_texture = SDL_CreateTextureFromSurface(renderer, temp_surf);
+                SDL_DestroySurface(temp_surf);
 
-                if (min_y < 0) min_y = 0;
-                if (max_y >= INTERNAL_HEIGHT) max_y = INTERNAL_HEIGHT - 1;
+                if (gpu_texture != NULL) {
+                    SDL_SetTextureScaleMode(gpu_texture, SDL_SCALEMODE_LINEAR);
 
-                for (int y = min_y; y <= max_y; y++) {
-                    float left_x = (float)INTERNAL_WIDTH;
-                    float right_x = -1.0f;
-                    float u_left = 0.0f, v_left = 0.0f;
-                    float u_right = 0.0f, v_right = 0.0f;
+                    SDL_Vertex verts[4];
 
-                    float dy_ca = poly.a.y - poly.c.y;
-                    if (dy_ca != 0.0f && y >= fminf(poly.c.y, poly.a.y) && y <= fmaxf(poly.c.y, poly.a.y)) {
-                        float t = (float)(y - poly.c.y) / dy_ca;
-                        float x = poly.c.x + t * (poly.a.x - poly.c.x);
-                        if (x < left_x) { left_x = x; u_left = 0.0f; v_left = t; }
-                        if (x > right_x) { right_x = x; u_right = 0.0f; v_right = t; }
-                    }
+                    verts[0] = (SDL_Vertex){
+                        {poly.a.x, poly.a.y},
+                        {poly.aSideBrightness, poly.aSideBrightness, poly.aSideBrightness, 1.0f},
+                        {0.0f, 0.0f}
+                    };
 
-                    float dy_db = poly.b.y - poly.d.y;
-                    if (dy_db != 0.0f && y >= fminf(poly.d.y, poly.b.y) && y <= fmaxf(poly.d.y, poly.b.y)) {
-                        float t = (float)(y - poly.d.y) / dy_db;
-                        float x = poly.d.x + t * (poly.b.x - poly.d.x);
-                        if (x < left_x) { left_x = x; u_left = 1.0f; v_left = t; }
-                        if (x > right_x) { right_x = x; u_right = 1.0f; v_right = t; }
-                    }
+                    verts[1] = (SDL_Vertex){
+                        {poly.b.x, poly.b.y},
+                        {poly.aSideBrightness, poly.aSideBrightness, poly.aSideBrightness, 1.0f},
+                        {1.0f, 0.0f}
+                    };
 
-                    float dy_cd = poly.d.y - poly.c.y;
-                    if (dy_cd != 0.0f && y >= fminf(poly.c.y, poly.d.y) && y <= fmaxf(poly.c.y, poly.d.y)) {
-                        float t = (float)(y - poly.c.y) / dy_cd;
-                        float x = poly.c.x + t * (poly.d.x - poly.c.x);
-                        if (x < left_x) { left_x = x; u_left = t; v_left = 0.0f; }
-                        if (x > right_x) { right_x = x; u_right = t; v_right = 0.0f; }
-                    }
+                    verts[2] = (SDL_Vertex){
+                        {poly.c.x, poly.c.y},
+                        {poly.cSideBrightness, poly.cSideBrightness, poly.cSideBrightness, 1.0f},
+                        {0.0f, 1.0f}
+                    };
 
-                    float dy_ab = poly.b.y - poly.a.y;
-                    if (dy_ab != 0.0f && y >= fminf(poly.a.y, poly.b.y) && y <= fmaxf(poly.a.y, poly.b.y)) {
-                        float t = (float)(y - poly.a.y) / dy_ab;
-                        float x = poly.a.x + t * (poly.b.x - poly.a.x);
-                        if (x < left_x) { left_x = x; u_left = t; v_left = 1.0f; }
-                        if (x > right_x) { right_x = x; u_right = t; v_left = 1.0f; }
-                    }
+                    verts[3] = (SDL_Vertex){
+                        {poly.d.x, poly.d.y},
+                        {poly.cSideBrightness, poly.cSideBrightness, poly.cSideBrightness, 1.0f},
+                        {1.0f, 1.0f}
+                    };
 
-                    int start_x = (int)fmaxf(0.0f, ceilf(left_x));
-                    int end_x = (int)fminf((float)(INTERNAL_WIDTH - 1), floorf(right_x));
+                    int indices[] = { 0, 1, 2,  1, 2, 3 };
 
-                    for (int x = start_x; x <= end_x; x++) {
-                        float span = (right_x > left_x) ? (float)(x - left_x) / (right_x - left_x) : 0.0f;
-                        float u_tex = u_left + span * (u_right - u_left);
-                        float v_tex = v_left + span * (v_right - v_left);
+                    SDL_RenderGeometry(renderer, gpu_texture, verts, 4, indices, 6);
 
-                        float tileFactorX = (end_x - start_x) / (float)texture.width;
-                        float tileFactorY = (max_y - min_y) / (float)texture.height;
-
-                        float tiled_u = fabsf(fmodf(u_tex * tileFactorX, 1.0f));
-                        float tiled_v = fabsf(fmodf(v_tex * tileFactorY, 1.0f));
-
-                        int tex_x = (int)(tiled_u * (texture.width - 1));
-                        int tex_y = (int)(tiled_v * (texture.height - 1));
-
-                        if (tex_x < 0) tex_x = 0;
-                        if (tex_x >= texture.width) tex_x = texture.width - 1;
-                        if (tex_y < 0) tex_y = 0;
-                        if (tex_y >= texture.height) tex_y = texture.height - 1;
-
-                        int tex_idx = tex_y * texture.width + tex_x;
-                        uint32_t color = getRenderPixel(&texture, tex_idx, 0);
-
-                        int r = getColorFragment(color, 3);
-                        int g = getColorFragment(color, 2);
-                        int b = getColorFragment(color, 1);
-                        int a = getColorFragment(color, 0);
-
-                        if (a == 0) continue;
-                        if (a != 255) {
-                            float perc = a / 255.0f;
-                            Uint32 baseColor = GrabPixel(surface, x, y);
-                            r = (int)(r * perc + getColorFragment(baseColor, 3) * (1.0f - perc));
-                            g = (int)(g * perc + getColorFragment(baseColor, 2) * (1.0f - perc));
-                            b = (int)(b * perc + getColorFragment(baseColor, 1) * (1.0f - perc));
-                            a = (int)(a * perc + getColorFragment(baseColor, 0) * (1.0f - perc));
-                        }
-
-                        float currentBrightness = poly.aSideBrightness + span * (poly.cSideBrightness - poly.aSideBrightness);
-                        r = clampColor(r * currentBrightness);
-                        g = clampColor(g * currentBrightness);
-                        b = clampColor(b * currentBrightness);
-
-                        ModifyPixel(surface, x, y, r, g, b, a);
-                    }
+                    SDL_DestroyTexture(gpu_texture);
                 }
+
+                // Free raw sprite pixel buffer loaded from file storage
+                free(sprite.data);
             }
 
-            // Keep your wireframe debug lines to verify alignment
-            drawLine(surface, poly.a.x, poly.a.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
-            drawLine(surface, poly.d.x, poly.d.y, poly.c.x, poly.c.y, 255, 255, 255, 255);
-            drawLine(surface, poly.a.x, poly.a.y, poly.c.x, poly.c.y, 255, 255, 255, 255);
-            drawLine(surface, poly.d.x, poly.d.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
-            drawLine(surface, poly.a.x, poly.a.y, poly.d.x, poly.d.y, 255, 255, 255, 255);
-            drawLine(surface, poly.c.x, poly.c.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
+            // Optional: Hardware debug wireframe overlay lines
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.b.x, poly.b.y);
+            SDL_RenderLine(renderer, poly.d.x, poly.d.y, poly.c.x, poly.c.y);
+            SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.c.x, poly.c.y);
+            SDL_RenderLine(renderer, poly.d.x, poly.d.y, poly.b.x, poly.b.y);
+            SDL_RenderLine(renderer, poly.a.x, poly.a.y, poly.d.x, poly.d.y);
+            SDL_RenderLine(renderer, poly.c.x, poly.c.y, poly.b.x, poly.b.y);
         }
 
         RenderQueue** renderQueues = passRenderQueue();
         RenderQueue* renderQueue = renderQueues[0];
 
-        for (int i = 0; i < renderQueue->size; i++) {
-            RenderedBody* body = renderQueue->sprites[i];
-            drawSpriteFromBody(surface, body->body.position.x, body->body.position.y, body);
-        }
+        RenderQueue* currentQueue = renderQueue;
+        for (int i = 0; i < currentQueue->size; i++) {
+            RenderedBody* body = currentQueue->sprites[i];
+            Sprite sprite = body->sprite;
+            
+            if (sprite.data != NULL) {
+                SDL_Surface* s_surf = SDL_CreateSurfaceFrom(
+                    sprite.width, sprite.height, 
+                    SDL_PIXELFORMAT_RGBA8888, 
+                    sprite.data, 
+                    sprite.width * sizeof(uint32_t)
+                );
+                SDL_Texture* sprite_tex = SDL_CreateTextureFromSurface(renderer, s_surf);
+                SDL_DestroySurface(s_surf);
+
+                if (sprite_tex) {
+                    int startY = (int)(sprite.height * body->renderPercentageStart);
+                    int stopY  = (int)(sprite.height * body->renderPercentage);
+                    int sliceHeight = stopY - startY;
+
+                    if (sliceHeight > 0) {
+                        SDL_FRect srcRect = {
+                            0,
+                            startY,
+                            sprite.width,
+                            sliceHeight
+                        };
+                        
+                        SDL_FRect dstRect = {
+                            (float)body->body.position.x,
+                            (float)body->body.position.y + startY,
+                            (float)sprite.width,
+                            (float)sliceHeight
+                        };
+
+                        SDL_RenderTexture(renderer, sprite_tex, &srcRect, &dstRect);
+                    }
+                    
+                    SDL_DestroyTexture(sprite_tex);
+                }
+            }
         
+        }
         free(renderQueues);
-
-        // render collisions (walls)
-        // for (int i = 0; i < world.walls.size; i++) {
-        //     Edge edge = world.walls.data[i];
-        //     drawLine(surface, (int)edge.a.x, (int)edge.a.y, (int)edge.b.x, (int)edge.b.y, 255, 0, 255, 255);
-        // }
-
-        // Upload surface pixel data to GPU texture
-        SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
-
-        // Clear and Render
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        // Render texture scaled to fill window
-        SDL_RenderTexture(renderer, texture, NULL, NULL);
 
         SDL_RenderPresent(renderer);
 
-        // Cap frame rate
+        // Frame rate limiter & calculation
         Uint64 frameTime = SDL_GetTicks() - frameStart;
         if (frameTime < frameDelay) {
             SDL_Delay(frameDelay - (Uint32)frameTime);
         }
 
-        // clear all
-        ModifyPixels(surface, 0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT, 0, 0, 0, 255);
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        elapsed_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+        if (elapsed_time > 0.0) {
+            fps = 1.0 / elapsed_time;
+            printf("FPS: %.2f\r", fps);
+            fflush(stdout);
+        }
     }
 
-    // Cleanup
-    SDL_DestroyTexture(texture);
-    SDL_DestroySurface(surface);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
     return 0;
 }
 

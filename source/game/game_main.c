@@ -38,7 +38,7 @@ static float rotationDirection = 0.0f; // player rotation
 static float walkDirection = 0.0f;
 static float rotation = 0.0f;
 
-void onTick(World* world) {
+void onTick(World* world, uint32_t tick) {
 
 }
 
