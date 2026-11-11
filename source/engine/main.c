@@ -6,6 +6,7 @@
 #include <math.h>
 #include "renderqueue.h"
 #include "polygon.h"
+#include "image.h"
 #include "../game/game_main.h"
 
 static inline uint8_t clampColor(float val) {
@@ -227,22 +228,122 @@ int Work() {
     onWorldGen(&world);
 
     while (1) {
-        Uint64 frameStart = SDL_GetTicks();
+        Uint64 frameStart = SDL_GetTicks(); // will last ~1x10^10 years at 60 fps. Cpu would be atomized before then
 
         SDL_Event event;
 
         // Call exposed game stuff
         if (onEvent(&event, &world))
             break;
-        PolygonArray polyArray = onRender(&world);
+        
+       PolygonArray polyArray = onRender(&world);
 
         for (int i = 0; i < polyArray.used; i++) {
-            drawLine(surface, polyArray.data[i].a.x, polyArray.data[i].a.y, polyArray.data[i].b.x, polyArray.data[i].b.y, 255, 255, 255, 255);
-            drawLine(surface, polyArray.data[i].d.x, polyArray.data[i].d.y, polyArray.data[i].c.x, polyArray.data[i].c.y, 255, 255, 255, 255);
-            drawLine(surface, polyArray.data[i].a.x, polyArray.data[i].a.y, polyArray.data[i].c.x, polyArray.data[i].c.y, 255, 255, 255, 255);
-            drawLine(surface, polyArray.data[i].d.x, polyArray.data[i].d.y, polyArray.data[i].b.x, polyArray.data[i].b.y, 255, 255, 255, 255);
-            drawLine(surface, polyArray.data[i].a.x, polyArray.data[i].a.y, polyArray.data[i].d.x, polyArray.data[i].d.y, 255, 255, 255, 255);
-            drawLine(surface, polyArray.data[i].c.x, polyArray.data[i].c.y, polyArray.data[i].b.x, polyArray.data[i].b.y, 255, 255, 255, 255);
+            Polygon poly = polyArray.data[i];
+            Sprite texture = loadImageAsSprite(poly.texture);
+
+            if (texture.data != NULL) { // I will cry if this breaks
+                int min_y = (int)fminf(fminf(poly.c.y, poly.d.y), fminf(poly.a.y, poly.b.y));
+                int max_y = (int)fmaxf(fmaxf(poly.c.y, poly.d.y), fmaxf(poly.a.y, poly.b.y));
+
+                if (min_y < 0) min_y = 0;
+                if (max_y >= INTERNAL_HEIGHT) max_y = INTERNAL_HEIGHT - 1;
+
+                for (int y = min_y; y <= max_y; y++) {
+                    float left_x = (float)INTERNAL_WIDTH;
+                    float right_x = -1.0f;
+                    float u_left = 0.0f, v_left = 0.0f;
+                    float u_right = 0.0f, v_right = 0.0f;
+
+                    float dy_ca = poly.a.y - poly.c.y;
+                    if (dy_ca != 0.0f && y >= fminf(poly.c.y, poly.a.y) && y <= fmaxf(poly.c.y, poly.a.y)) {
+                        float t = (float)(y - poly.c.y) / dy_ca;
+                        float x = poly.c.x + t * (poly.a.x - poly.c.x);
+                        if (x < left_x) { left_x = x; u_left = 0.0f; v_left = t; }
+                        if (x > right_x) { right_x = x; u_right = 0.0f; v_right = t; }
+                    }
+
+                    float dy_db = poly.b.y - poly.d.y;
+                    if (dy_db != 0.0f && y >= fminf(poly.d.y, poly.b.y) && y <= fmaxf(poly.d.y, poly.b.y)) {
+                        float t = (float)(y - poly.d.y) / dy_db;
+                        float x = poly.d.x + t * (poly.b.x - poly.d.x);
+                        if (x < left_x) { left_x = x; u_left = 1.0f; v_left = t; }
+                        if (x > right_x) { right_x = x; u_right = 1.0f; v_right = t; }
+                    }
+
+                    float dy_cd = poly.d.y - poly.c.y;
+                    if (dy_cd != 0.0f && y >= fminf(poly.c.y, poly.d.y) && y <= fmaxf(poly.c.y, poly.d.y)) {
+                        float t = (float)(y - poly.c.y) / dy_cd;
+                        float x = poly.c.x + t * (poly.d.x - poly.c.x);
+                        if (x < left_x) { left_x = x; u_left = t; v_left = 0.0f; }
+                        if (x > right_x) { right_x = x; u_right = t; v_right = 0.0f; }
+                    }
+
+                    float dy_ab = poly.b.y - poly.a.y;
+                    if (dy_ab != 0.0f && y >= fminf(poly.a.y, poly.b.y) && y <= fmaxf(poly.a.y, poly.b.y)) {
+                        float t = (float)(y - poly.a.y) / dy_ab;
+                        float x = poly.a.x + t * (poly.b.x - poly.a.x);
+                        if (x < left_x) { left_x = x; u_left = t; v_left = 1.0f; }
+                        if (x > right_x) { right_x = x; u_right = t; v_left = 1.0f; }
+                    }
+
+                    int start_x = (int)fmaxf(0.0f, ceilf(left_x));
+                    int end_x = (int)fminf((float)(INTERNAL_WIDTH - 1), floorf(right_x));
+
+                    for (int x = start_x; x <= end_x; x++) {
+                        float span = (right_x > left_x) ? (float)(x - left_x) / (right_x - left_x) : 0.0f;
+                        float u_tex = u_left + span * (u_right - u_left);
+                        float v_tex = v_left + span * (v_right - v_left);
+
+                        float tileFactorX = (end_x - start_x) / (float)texture.width;
+                        float tileFactorY = (max_y - min_y) / (float)texture.height;
+
+                        float tiled_u = fabsf(fmodf(u_tex * tileFactorX, 1.0f));
+                        float tiled_v = fabsf(fmodf(v_tex * tileFactorY, 1.0f));
+
+                        int tex_x = (int)(tiled_u * (texture.width - 1));
+                        int tex_y = (int)(tiled_v * (texture.height - 1));
+
+                        if (tex_x < 0) tex_x = 0;
+                        if (tex_x >= texture.width) tex_x = texture.width - 1;
+                        if (tex_y < 0) tex_y = 0;
+                        if (tex_y >= texture.height) tex_y = texture.height - 1;
+
+                        int tex_idx = tex_y * texture.width + tex_x;
+                        uint32_t color = getRenderPixel(&texture, tex_idx, 0);
+
+                        int r = getColorFragment(color, 3);
+                        int g = getColorFragment(color, 2);
+                        int b = getColorFragment(color, 1);
+                        int a = getColorFragment(color, 0);
+
+                        if (a == 0) continue;
+                        if (a != 255) {
+                            float perc = a / 255.0f;
+                            Uint32 baseColor = GrabPixel(surface, x, y);
+                            r = (int)(r * perc + getColorFragment(baseColor, 3) * (1.0f - perc));
+                            g = (int)(g * perc + getColorFragment(baseColor, 2) * (1.0f - perc));
+                            b = (int)(b * perc + getColorFragment(baseColor, 1) * (1.0f - perc));
+                            a = (int)(a * perc + getColorFragment(baseColor, 0) * (1.0f - perc));
+                        }
+
+                        float currentBrightness = poly.aSideBrightness + span * (poly.cSideBrightness - poly.aSideBrightness);
+                        r = clampColor(r * currentBrightness);
+                        g = clampColor(g * currentBrightness);
+                        b = clampColor(b * currentBrightness);
+
+                        ModifyPixel(surface, x, y, r, g, b, a);
+                    }
+                }
+            }
+
+            // Keep your wireframe debug lines to verify alignment
+            drawLine(surface, poly.a.x, poly.a.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
+            drawLine(surface, poly.d.x, poly.d.y, poly.c.x, poly.c.y, 255, 255, 255, 255);
+            drawLine(surface, poly.a.x, poly.a.y, poly.c.x, poly.c.y, 255, 255, 255, 255);
+            drawLine(surface, poly.d.x, poly.d.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
+            drawLine(surface, poly.a.x, poly.a.y, poly.d.x, poly.d.y, 255, 255, 255, 255);
+            drawLine(surface, poly.c.x, poly.c.y, poly.b.x, poly.b.y, 255, 255, 255, 255);
         }
 
         RenderQueue** renderQueues = passRenderQueue();

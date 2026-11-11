@@ -8,6 +8,9 @@ typedef struct {
     Vect b;
     Vect c;
     Vect d;
+    char* texture;
+    float aSideBrightness;
+    float cSideBrightness;
 } Polygon;
 
 typedef struct {
