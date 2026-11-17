@@ -29,7 +29,7 @@
 
 // envar
 #define rotationSpeed 6.0f
-#define RAY_AMOUNT 1280
+#define RAY_AMOUNT 640
 #define FOV 1.22f
 #define RANGE 1500
 
@@ -92,17 +92,17 @@ PolygonArray sight(World* world) {
     int lastIndex = -1;
     int prevChangeWall = 0;
 
-    // create a floor polygon
-    Polygon floor;
-    floor.a = Vector_new(0, INTERNAL_HEIGHT / 2);
-    floor.b = Vector_new(INTERNAL_WIDTH, INTERNAL_HEIGHT / 2);
-    floor.c = Vector_new(0, INTERNAL_HEIGHT);
-    floor.d = Vector_new(INTERNAL_WIDTH, INTERNAL_HEIGHT);
-    floor.aSideBrightness = 0.0f;
-    floor.cSideBrightness = 1.5f;
-    floor.texture = "./source/res/images/alternate";
-    polyArray.data[polyArray.used] = floor;
-    polyArray.used++;
+    // // create a floor polygon
+    // Polygon floor;
+    // floor.a = Vector_new(0, INTERNAL_HEIGHT / 2);
+    // floor.b = Vector_new(INTERNAL_WIDTH, INTERNAL_HEIGHT / 2);
+    // floor.c = Vector_new(0, INTERNAL_HEIGHT);
+    // floor.d = Vector_new(INTERNAL_WIDTH, INTERNAL_HEIGHT);
+    // floor.aSideBrightness = 0.0f;
+    // floor.cSideBrightness = 1.5f;
+    // floor.texture = "./source/res/images/alternate";
+    // polyArray.data[polyArray.used] = floor;
+    // polyArray.used++;
                 
 
     for (int i = 0; i < RAY_AMOUNT; i++) {
@@ -138,10 +138,10 @@ PolygonArray sight(World* world) {
 
             if (lastIndex != currentIndex) {
                 Polygon p;
-                p.a = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
-                p.b = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH + 2, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                p.a = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH - 2, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
+                p.b = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
                 p.c = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
-                p.d = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH + 2, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
+                p.d = Vector_new((float)(i + 1) / RAY_AMOUNT * INTERNAL_WIDTH - 2, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
                 p.aSideBrightness = brightness;
                 p.cSideBrightness = brightness;
                 p.texture = "./source/res/images/default";
@@ -149,7 +149,7 @@ PolygonArray sight(World* world) {
                 polyArray.used++;
                 prevChangeWall = 1;
             } else {
-                if (polyArray.used - 2 > 1 && prevChangeWall) {
+                if (polyArray.used - 2 > 0 && prevChangeWall) {
                     polyArray.data[polyArray.used - 2].c = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 + wallHeight));
                     polyArray.data[polyArray.used - 2].d = Vector_new((float)i / RAY_AMOUNT * INTERNAL_WIDTH, (float)(INTERNAL_HEIGHT / 2 - wallHeight));
                 }
