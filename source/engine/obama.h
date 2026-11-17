@@ -8,7 +8,7 @@
 #define DEFAULT_MAX_SPEED 16
 #define MAX_ELEMENTS_IN_WORLD 255
 #define TICK_RATE 2 // tick every 2 frames
-#define FRAME_RATE 60
+#define FRAME_RATE 120
 #define INTERNAL_WIDTH 640
 #define INTERNAL_HEIGHT 480
 
